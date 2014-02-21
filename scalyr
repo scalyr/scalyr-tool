@@ -42,7 +42,7 @@ def getApiToken(args, environmentVariableName, permissionType):
 def sendRequest(args, uri, parameterDict):
   parameterJson = json.dumps(parameterDict);
 
-  queryStartTime = time.time()
+  queryStartTime = datetime.datetime.now()
 
   verbose = args.verbose
   if verbose:
@@ -80,7 +80,7 @@ def sendRequest(args, uri, parameterDict):
   responseBody = response.read()
 
   if verbose or (response.status != 200):
-    print >> sys.stderr, "After %d seconds, Scalyr server returned %d bytes; status %d / %s" % (time.time() - queryStartTime, len(responseBody), response.status, response.reason)
+    print >> sys.stderr, "After %s seconds, Scalyr server returned %s bytes; status %d / %s" % (int((datetime.datetime.now() - queryStartTime). total_seconds() * 1000) / 1000.0, len(responseBody), response.status, response.reason)
 
   if response.status != 200:
     print >> sys.stderr, 'Response body:'
@@ -99,7 +99,7 @@ def sendRequest(args, uri, parameterDict):
     print >> sys.stderr, 'Scalyr server returned error: %s (%s)' % (parsedResponse['message'], status)
     sys.exit(1)
     
-  return parsedResponse;
+  return (parsedResponse, responseBody);
 
 
 # Implement the "scalyr get-file" command.
@@ -109,7 +109,7 @@ def commandGetFile(parser):
   args = parser.parse_args()
 
   # Send the request to the server.
-  response = sendRequest(args, '/getFile', {
+  response, rawResponse = sendRequest(args, '/getFile', {
     "token": getApiToken(args, 'scalyr_readconfig_token', 'Read Config'),
     "path": args.filepath,
     });
@@ -134,7 +134,7 @@ def commandPutFile(parser):
 
   # Send the request to the server.
   content = sys.stdin.read()
-  response = sendRequest(args, '/putFile', {
+  response, rawResponse = sendRequest(args, '/putFile', {
     "token": getApiToken(args, 'scalyr_writeconfig_token', 'Write Config'),
     "path": args.filepath,
     "content": content
@@ -150,7 +150,7 @@ def commandListFiles(parser):
   args = parser.parse_args()
 
   # Send the request to the server.
-  response = sendRequest(args, '/listFiles', {
+  response, rawResponse = sendRequest(args, '/listFiles', {
     "token": getApiToken(args, 'scalyr_readconfig_token', 'Read Config')
     });
 
@@ -190,7 +190,7 @@ def commandQuery(parser):
 
 
   # Send the query to the server.
-  response = sendRequest(args, '/api/query', {
+  response, rawResponse = sendRequest(args, '/api/query', {
     "token": apiToken,
     "queryType": "log",
     "filter": args.filter,
@@ -206,7 +206,7 @@ def commandQuery(parser):
   matches = response['matches']
 
   if args.output == 'json':
-    print responseBody
+    print rawResponse
   elif args.output == 'json-pretty':
     print json.dumps(response, sort_keys=True, indent=2, separators=(',', ': '))
   elif args.output == 'csv':
