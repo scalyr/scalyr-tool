@@ -1,0 +1,281 @@
+#!/usr/bin/env python
+#
+# Scalyr command-line utility
+
+import sys
+import os
+import argparse
+import re
+import time
+import datetime
+import httplib
+import urllib
+import urllib2
+import json
+import socket
+import csv
+import StringIO
+
+
+# Define some constants
+TOOL_VERSION = "0.1"
+
+# Return the API token from the command line or environment variables.
+def getApiToken(args, environmentVariableName, permissionType):
+  apiToken = args.token
+  if apiToken == '':
+    apiToken = os.getenv(environmentVariableName, '')
+  if apiToken == '':
+    print >> sys.stderr, 'Please specify an API token granting ' + permissionType + ' permission. You can place it in the'
+    print >> sys.stderr, 'command line as --token "XXX", or in the environment variable "' + environmentVariableName + '".'
+    print >> sys.stderr, 'Use of an environment variable is recommended, to avoid displaying your API token in the'
+    print >> sys.stderr, 'console or your command history. You can find API tokens at https://www.scalyr.com/keys.'
+    sys.exit(1)
+
+  return apiToken
+
+
+# Send a request to the server, and return the parsed JSON response.
+# args: Our parsed command-line arguments
+# uri: Request path for this RPC, e.g. "api/query"
+# parametetDict: The dictionary to be sent (JSON-encoded) to the server as the request body
+def sendRequest(args, uri, parameterDict):
+  parameterJson = json.dumps(parameterDict);
+
+  queryStartTime = time.time()
+
+  verbose = args.verbose
+  if verbose:
+    print >> sys.stderr, "Using arguments: %s" % args
+
+  serverAddress = args.server
+  useSSL = True
+  if serverAddress.startswith("http://"):
+    useSSL = False
+    serverAddress = serverAddress[7:]
+  elif serverAddress.startswith("https://"):
+    serverAddress = serverAddress[8:]
+
+  if verbose:
+    print >> sys.stderr, "Connecting to %s via %s" % (serverAddress, 'https' if useSSL else 'http')
+
+  conn = None
+  if useSSL:
+    conn = httplib.HTTPSConnection(serverAddress)
+  else:
+    conn = httplib.HTTPConnection(serverAddress)
+
+  headers = {"Content-type": "application/json"}
+
+  if verbose:
+    print >> sys.stderr, "Request headers:"
+    print >> sys.stderr, headers
+    print >> sys.stderr, "Request body:"
+    print >> sys.stderr, json.dumps(json.loads(parameterJson), sort_keys=True, indent=2, separators=(',', ': '))
+
+  conn.request("POST", uri, parameterJson, headers)
+
+  # Retrieve and parse the response.
+  response = conn.getresponse()
+  responseBody = response.read()
+
+  if verbose or (response.status != 200):
+    print >> sys.stderr, "After %d seconds, Scalyr server returned %d bytes; status %d / %s" % (time.time() - queryStartTime, len(responseBody), response.status, response.reason)
+
+  if response.status != 200:
+    print >> sys.stderr, 'Response body:'
+    print >> sys.stderr, responseBody
+    sys.exit(1)
+
+  try:
+    parsedResponse = json.loads(responseBody)
+  except ValueError, e:
+    print >> sys.stderr, 'Scalyr server returned invalid response:'
+    print >> sys.stderr, responseBody
+    sys.exit(1)
+
+  status = parsedResponse['status']
+  if not status.startswith('success'):
+    print >> sys.stderr, 'Scalyr server returned error: %s (%s)' % (parsedResponse['message'], status)
+    sys.exit(1)
+    
+  return parsedResponse;
+
+
+# Implement the "scalyr get-file" command.
+def commandGetFile(parser):
+  parser.add_argument('filepath', default='',
+                      help='server pathname of the file to retrieve, e.g. "/scalyr/alerts"')
+  args = parser.parse_args()
+
+  # Send the request to the server.
+  response = sendRequest(args, '/getFile', {
+    "token": getApiToken(args, 'scalyr_readconfig_token', 'Read Config'),
+    "path": args.filepath,
+    });
+
+  # Print the file content.
+  if response['status'] == 'success/noSuchFile':
+    print >> sys.stderr, 'File "%s" does not exist' % (args.filepath)
+  else:
+    createDate = datetime.datetime.fromtimestamp(long(response['createDate']) / 1000)
+    modDate    = datetime.datetime.fromtimestamp(long(response['modDate']) / 1000)
+
+    print >> sys.stderr, 'Retrieved file "%s", version %d, created %s, modified %s, length %s' % (args.filepath, response['version'], createDate, modDate, len(response['content']))
+    print response['content']
+
+
+# Implement the "scalyr put-file" command.
+def commandPutFile(parser):
+  # Parse the command-line arguments.
+  parser.add_argument('filepath', default='',
+                      help='server pathname of the file to retrieve, e.g. "/scalyr/alerts"')
+  args = parser.parse_args()
+
+  # Send the request to the server.
+  content = sys.stdin.read()
+  response = sendRequest(args, '/putFile', {
+    "token": getApiToken(args, 'scalyr_writeconfig_token', 'Write Config'),
+    "path": args.filepath,
+    "content": content
+    });
+
+  # Print the file content.
+  print >> sys.stderr, 'File "%s" updated' % (args.filepath)
+
+
+# Implement the "scalyr list-files" command.
+def commandListFiles(parser):
+  # Parse the command-line arguments.
+  args = parser.parse_args()
+
+  # Send the request to the server.
+  response = sendRequest(args, '/listFiles', {
+    "token": getApiToken(args, 'scalyr_readconfig_token', 'Read Config')
+    });
+
+  # Print the file content.
+  paths = response['paths']
+  for i in range(len(paths)):
+    print paths[i]
+
+
+# Implement the "scalyr query" command.
+def commandQuery(parser):
+  # Parse the command-line arguments.
+  parser.add_argument('filter', nargs='?', default='',
+                      help='search term or filter expression')
+  parser.add_argument('--start', default='',
+                      help='beginning of the time range to query')
+  parser.add_argument('--end', default='',
+                      help='end of the time range to query')
+  parser.add_argument('--count', type=int, default=10,
+                      help='how many log records to retrieve (1-5000)')
+  parser.add_argument('--mode', choices=['head', 'tail'], default='',
+                      help='specifies whether to show logs from the beginning or end of the time range')
+  parser.add_argument('--columns', default='',
+                      help='comma-delimited list of columns to display; defaults to all')
+  parser.add_argument('--output', choices=['text', 'csv', 'json', 'json-pretty'], default='text',
+                      help='specifies the format in which matching log messages are displayed')
+  args = parser.parse_args()
+
+  columns = args.columns
+  output = args.output
+  if output == 'csv' and columns == '':
+    print >> sys.stderr, 'For CSV output, you must supply a nonempty --columns option'
+    sys.exit(1)
+
+  # Get the API token.
+  apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+
+
+  # Send the query to the server.
+  response = sendRequest(args, '/api/query', {
+    "token": apiToken,
+    "queryType": "log",
+    "filter": args.filter,
+    "startTime": args.start,
+    "endTime": args.end,
+    "maxCount": args.count,
+    "pageMode": args.mode,
+    "columns": columns,
+    });
+
+
+  # Print the log records.
+  matches = response['matches']
+
+  if args.output == 'json':
+    print responseBody
+  elif args.output == 'json-pretty':
+    print json.dumps(response, sort_keys=True, indent=2, separators=(',', ': '))
+  elif args.output == 'csv':
+    columnList = columns.split(',')
+    
+    ar = [];
+    for i in range(len(columnList)):
+      ar.append(columnList[i])
+    
+    csvBuffer = StringIO.StringIO()
+    csvWriter = csv.writer(csvBuffer, dialect='excel')
+    csvWriter.writerow(ar)
+    for i in range(len(matches)):
+      match = matches[i]
+      attributes = match.get('attributes')
+      for i in range(len(columnList)):
+        column = columnList[i]
+        ar[i] = match.get(column) or attributes.get(column) or ''
+      csvWriter.writerow(ar)
+
+    print csvBuffer.getvalue()
+  else:
+    # Readable text format
+    for i in range(len(matches)):
+      match = matches[i]
+      
+      rawTimestamp = match.get('timestamp')
+      timestamp = ""
+      if rawTimestamp:
+        timestamp = str(datetime.datetime.fromtimestamp(long(rawTimestamp) / 1E9)) + ": "
+
+      rawSeverity = match.get('severity')
+      severity = ""
+      if rawSeverity or 0 == rawSeverity:
+        severity = ['L', 'K', 'J', 'I', 'W', 'E', 'F'][rawSeverity] + " ";
+
+      message = match.get('message')
+      if not message:
+        message = ''
+      attributes = match.get('attributes')
+
+      print '%s%s%s' % (timestamp, severity, message)
+      for attrName in sorted(attributes.keys()):
+        print '  %s = %s' % (attrName, attributes[attrName])
+
+
+# Define arguments that are the same for all commands
+parser = argparse.ArgumentParser(description='Scalyr command-line tool. See https://github.com/scalyr/scalyr-tool for documentation.')
+parser.add_argument('command', choices=['query', 'get-file', 'put-file', 'list-files'],
+                    help='specifies the action to be performed')
+parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
+parser.add_argument('--server', default='https://www.scalyr.com',
+                    help='URL for the Scalyr API server')
+parser.add_argument('--token', default='',
+                    help='API access token')
+parser.add_argument('--verbose', action='store_true', default=False,
+                    help='enables additional diagnostic output')
+
+command = sys.argv[1] if len(sys.argv) >= 2 else ""
+if command == 'query':
+  commandQuery(parser)
+elif command == 'get-file':
+  commandGetFile(parser)
+elif command == 'put-file':
+  commandPutFile(parser)
+elif command == 'list-files':
+  commandListFiles(parser)
+else:
+  print >> sys.stderr, 'Unknown command "%s".' % command
+  print >> sys.stderr, 'Please enter "query", "get-file", "put-file", or "list-files" as the first argument.'
+  print >> sys.stderr, 'Append --help after the command name for additional information, e.g. "%s query --help".' % (sys.argv[0])
+  exit(1)
