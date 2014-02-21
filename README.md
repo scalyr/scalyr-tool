@@ -53,7 +53,7 @@ Here are some usage examples:
     
     # Display the last 1000 entries in the log tagged as source=accessLog. Print only the status
     # and path, in CSV format.
-    ./scalyr query '$source="accessLog"' --output=csv --columns='status,uriPath' --count=1000
+    scalyr query '$source="accessLog"' --output=csv --columns='status,uriPath' --count=1000
 
 Complete argument list:
 
