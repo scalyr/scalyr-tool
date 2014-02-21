@@ -84,7 +84,7 @@ Complete argument list:
     --output=text|csv|json|json-pretty
         How to display the log messages (see below).
 
-## Output formats
+#### Output formats
 
 By default, the query command outputs log messages in a fairly verbose format designed for manual
 viewing. You can get something more like a classic log view by specifying a columns list, as shown in
