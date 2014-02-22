@@ -175,7 +175,7 @@ def commandQuery(parser):
                       help='specifies whether to show logs from the beginning or end of the time range')
   parser.add_argument('--columns', default='',
                       help='comma-delimited list of columns to display; defaults to all')
-  parser.add_argument('--output', choices=['text', 'csv', 'json', 'json-pretty'], default='text',
+  parser.add_argument('--output', choices=['singleline', 'multiline', 'csv', 'json', 'json-pretty'], default='multiline',
                       help='specifies the format in which matching log messages are displayed')
   args = parser.parse_args()
 
@@ -224,12 +224,17 @@ def commandQuery(parser):
       attributes = match.get('attributes')
       for i in range(len(columnList)):
         column = columnList[i]
-        ar[i] = match.get(column) or attributes.get(column) or ''
+        if column in match:
+          ar[i] = match.get(column)
+        elif column in attributes:
+          ar[i] = attributes.get(column)
+        else:
+          ar[i] = ''
       csvWriter.writerow(ar)
 
     print csvBuffer.getvalue()
   else:
-    # Readable text format
+    # Readable text format (singleline or multiline)
     for i in range(len(matches)):
       match = matches[i]
       
@@ -248,9 +253,15 @@ def commandQuery(parser):
         message = ''
       attributes = match.get('attributes')
 
-      print '%s%s%s' % (timestamp, severity, message)
-      for attrName in sorted(attributes.keys()):
-        print '  %s = %s' % (attrName, attributes[attrName])
+      if args.output == 'singleline':
+        print ('%s%s%s' % (timestamp, severity, message)),
+        for attrName in sorted(attributes.keys()):
+          print (' %s=%s' % (attrName, attributes[attrName])),
+        print ''
+      else:
+        print '%s%s%s' % (timestamp, severity, message)
+        for attrName in sorted(attributes.keys()):
+          print '  %s = %s' % (attrName, attributes[attrName])
 
 
 # Define arguments that are the same for all commands

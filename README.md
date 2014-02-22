@@ -81,16 +81,19 @@ Complete argument list:
     --columns="..."
         Which log attributes to display. Used mainly for logs for which you have specified a parser to
         extract attributs from the raw text. Specify one or more attribute names, separated by commas.
-    --output=text|csv|json|json-pretty
-        How to display the log messages (see below).
+    --output=multiline|singleline|csv|json|json-pretty
+        How to display the log records (see below).
 
 #### Output formats
 
-By default, the query command outputs log messages in a fairly verbose format designed for manual
+By default, the query command outputs log records in a fairly verbose format designed for manual
 viewing. You can get something more like a classic log view by specifying a columns list, as shown in
 one of the examples above.
 
-The 'csv' output option emits one line per log message, in Excel comma-separated-value format. To use
+The 'singleline' output option is similar to the default, but places all of a record's attributes on
+a single line. This is denser, but can be harder to read.
+
+The 'csv' output option emits one line per log record, in Excel comma-separated-value format. To use
 this option, you must specify the columns argument.
 
 The 'json' output option emits the raw JSON response from the server, as documented at
@@ -170,6 +173,6 @@ Complete argument list:
 
 ## Revision History
 
-#### Feb. 20, 2014: version 0.1
+#### Feb. 21, 2014: version 0.1
 
 Initial release.
