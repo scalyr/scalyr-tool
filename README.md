@@ -1,9 +1,12 @@
 scalyr-tool
 ===========
 
-Command-line tool for accessing Scalyr services. Four commands are currently supported:
+Command-line tool for accessing Scalyr services. Seven commands are currently supported:
 
 - **query**: Retrieve log data
+- **numeric-query**: Retrieve numeric / graph data
+- **timeseries-query**: Retrieve numeric / graph data from a timeseries
+- **create-timeseries**: Create a timeseries for fast numeric queries
 - **get-file**: Fetch a configuration file
 - **put-file**: Create or update a configuration file
 - **list-files**: List all configuration files
@@ -61,12 +64,6 @@ Complete argument list:
         The filter specifies which log records to return. It uses the same syntax as the "Expression"
         field in the [log view](https://www.scalyr.com/events?mode=log).
 
-    --version
-        Prints the current version number of this tool.
-    --token=xxx
-        Specify the API token. For this command, should be a "Read Logs" token.
-    --verbose
-        Writes detailed progress information to stderr.
     --start=xxx
         Specify the beginning of the time range to query. Uses the same syntax as the "Start" field is
         the log view. Defaults to 1 day ago, or to 1 day before the end time if an end time is given.
@@ -83,6 +80,12 @@ Complete argument list:
         extract attributs from the raw text. Specify one or more attribute names, separated by commas.
     --output=multiline|singleline|csv|json|json-pretty
         How to display the log records (see below).
+    --version
+        Prints the current version number of this tool.
+    --token=xxx
+        Specify the API token. For this command, should be a "Read Logs" token.
+    --verbose
+        Writes detailed progress information to stderr.
 
 #### Output formats
 
@@ -97,9 +100,157 @@ The 'csv' output option emits one line per log record, in Excel comma-separated-
 this option, you must specify the columns argument.
 
 The 'json' output option emits the raw JSON response from the server, as documented at
-https://www.scalyr.com/logapihttp (look for discussion of the Query method).
+https://www.scalyr.com/help/api#query.
 
 The 'json-pretty' output option also emits the JSON response from the server, but prettyprinted.
+
+#### Usage limits
+
+Your command line and API queries are limited to 30,000 milliseconds of server processing time,
+replenished at 36,000 milliseconds per hour. If you exceed this limit, your queries will be intermittently
+refused. (Your other uses of Scalyr, such as log uploading or queries via the web site, will not be impacted.)
+If you need a higher limit, drop us a line at support@scalyr.com.
+
+
+## Fetching numeric data
+
+The "numeric-query" command allows you to retrieve numeric data, e.g. for graphing. You can count the
+rate of events matching some criterion (e.g. error rate), or retrieve a numeric field (e.g. response
+size).
+
+If you will be be invoking the same query repeatedly (e.g. in a script), you may want to use the
+create-timeseries command to create a timeseries for your query. Timeseries queries execute near-
+instantaneously, and avoid exhausting your query execution limit (see below).
+
+Here are some usage examples:
+
+    # Count the rate (per second) of occurrences of "/login" in all logs, in each of the last 24 hours
+    scalyr numeric-query '/login' --start 24h --buckets 24
+    
+    # Display the average response size of all requests in the last hour
+    scalyr numeric-query '$dataset="accesslog"' --function 'bytes'
+
+Complete argument list:
+
+    scalyr numeric-query [filter] --start xxx [options...]
+        The filter specifies which log records to process. It uses the same syntax as the "Expression"
+        field in the [log view](https://www.scalyr.com/events?mode=log).
+
+    --function=xxx
+        The value to compute from the matching events. You can use any function listed in
+        https://www.scalyr.com/help/query-language#graphFunctions, except for fraction(expr). For
+        example: 'mean(x)' or 'median(responseTime)', if x and responseTime are fields of your log.
+        You can also specify a simple field name, such as 'responseTime', to return the mean value of
+        that field. If you omit the function argument, the rate of matching events per second will be
+        returned. Specifying 'rate' yields the same result.
+    --start=xxx
+        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field is
+        the log view. You must specify this argument.
+    --end=xxx
+        Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
+        view. Defaults to the current time.
+    --buckets=nnn
+        The number of numeric values to return. The time range is divided into this many equal slices.
+        For instance, suppose you query a four-hour period, with buckets = 4. The query will return four
+        numbers, each covering a one-hour period. You may specify a value from 1 to 5000; 1 is the default.
+    --output=csv|json|json-pretty
+        How to display the results. 'csv' prints all values on a single line, separated by commas.
+        'json' prints the raw JSON response from the server, as documented at
+        https://www.scalyr.com/help/api#numericQuery. 'json-pretty' also prints the JSON response,
+        but prettyprinted.
+    --token=xxx
+        Specify the API token. For this command, should be a "Read Logs" token.
+    --version
+        Prints the current version number of this tool.
+    --verbose
+        Writes detailed progress information to stderr.
+
+#### Usage limits
+
+Your command line and API queries are limited to 30,000 milliseconds of server processing time,
+replenished at 36,000 milliseconds per hour. If you exceed this limit, your queries will be intermittently
+refused. (Your other uses of Scalyr, such as log uploading or queries via the web site, will not be impacted.)
+If you need a higher limit, drop us a line at support@scalyr.com.
+
+
+## Fetching numeric data using a timeseries
+
+The "timeseries-query" command allows you to retrieve numeric data using a timeseries defined using the
+create-timeseries command. (Note that the [Scalyr API](https://www.scalyr.com/help/api#timeseriesQuery)
+allows multiple timeseries queries in a single API invocation, but the command-line tool only supports
+one query at a time.)
+
+Usage is similar to the numeric-query command, but you specify a timeseries ID instead of a filter and/or
+function. For example:
+
+    scalyr numeric-query 'xxxxxxx' --start 24h --buckets 24
+    
+(where 'xxxxxxx' is a timeseries ID generated by the create-timeseries command.)
+
+Complete argument list:
+
+    scalyr timeseries-query timeseriesid --start xxx [options...]
+
+    --start=xxx
+        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field is
+        the log view. You must specify this argument.
+    --end=xxx
+        Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
+        view. Defaults to the current time.
+    --buckets=nnn
+        The number of numeric values to return. The time range is divided into this many equal slices.
+        For instance, suppose you query a four-hour period, with buckets = 4. The query will return four
+        numbers, each covering a one-hour period. You may specify a value from 1 to 5000; 1 is the default.
+    --output=csv|json|json-pretty
+        How to display the results. 'csv' prints all values on a single line, separated by commas.
+        'json' prints the raw JSON response from the server, as documented at
+        https://www.scalyr.com/help/api#numericQuery. 'json-pretty' also prints the JSON response,
+        but prettyprinted.
+    --token=xxx
+        Specify the API token. For this command, should be a "Read Logs" token.
+    --version
+        Prints the current version number of this tool.
+    --verbose
+        Writes detailed progress information to stderr.
+
+
+## Creating timeseries
+
+The "create-timeseries" command allows you to create a timeseries, for later use in the timeseries-query
+command. A timeseries precomputes a numeric query, allowing you to execute queries almost instantaneously.
+This is useful for queries that you execute repeatedly. If you are using the Scalyr API to feed a home-built
+dashboard, alerting system, or other automated tool, timeseries are for you.
+
+It may take up to half an hour for a timeseries to be fully created. During that time, you can query the
+timeseries, but queries may not execute as quickly. Recent data is accelerated before older data.
+
+Here are some usage examples:
+
+    # Count the rate (per second) of occurrences of "/login" in all logs
+    scalyr create-timeseries '/login'
+    
+    # Compute the average response size of all requests
+    scalyr create-timeseries '$dataset="accesslog"' --function 'bytes'
+
+Complete argument list:
+
+    scalyr create-timeseries [filter] [options...]
+        The filter specifies which log records to process. It uses the same syntax as the "Expression"
+        field in the [log view](https://www.scalyr.com/events?mode=log).
+
+    --function=xxx
+        The value to compute from the matching events. You can use any function listed in
+        https://www.scalyr.com/help/query-language#graphFunctions, except for fraction(expr). For
+        example: 'mean(x)' or 'median(responseTime)', if x and responseTime are fields of your log.
+        You can also specify a simple field name, such as 'responseTime', to return the mean value of
+        that field. If you omit the function argument, the rate of matching events per second will be
+        returned. Specifying 'rate' yields the same result.
+    --token=xxx
+        Specify the API token. For this command, should be a "Read Logs" token.
+    --version
+        Prints the current version number of this tool.
+    --verbose
+        Writes detailed progress information to stderr.
 
 
 ## Retrieving configuration files

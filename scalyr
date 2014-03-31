@@ -104,7 +104,7 @@ def sendRequest(args, uri, parameterDict):
 
 # Implement the "scalyr get-file" command.
 def commandGetFile(parser):
-  parser.add_argument('filepath', default='',
+  parser.add_argument('filepath', required=True,
                       help='server pathname of the file to retrieve, e.g. "/scalyr/alerts"')
   args = parser.parse_args()
 
@@ -128,7 +128,7 @@ def commandGetFile(parser):
 # Implement the "scalyr put-file" command.
 def commandPutFile(parser):
   # Parse the command-line arguments.
-  parser.add_argument('filepath', default='',
+  parser.add_argument('filepath', required=True,
                       help='server pathname of the file to retrieve, e.g. "/scalyr/alerts"')
   args = parser.parse_args()
 
@@ -264,9 +264,115 @@ def commandQuery(parser):
           print '  %s = %s' % (attrName, attributes[attrName])
 
 
+# Print the output of a numeric-query or timeseries-query command.
+def printNumericResults(values, outputFormat, rawResponse, response):
+  if outputFormat == 'json':
+    print rawResponse
+  elif outputFormat == 'json-pretty':
+    print json.dumps(response, sort_keys=True, indent=2, separators=(',', ': '))
+  else:
+    # csv
+    print ','.join(map(str, values))
+
+
+# Implement the "scalyr numeric-query" command.
+def commandNumericQuery(parser):
+  # Parse the command-line arguments.
+  parser.add_argument('filter', nargs='?', default='',
+                      help='search term or filter expression')
+  parser.add_argument('--function', default='',
+                      help='the value to compute from the events matching the filter')
+  parser.add_argument('--start', required=True,
+                      help='beginning of the time range to query')
+  parser.add_argument('--end', default='',
+                      help='end of the time range to query')
+  parser.add_argument('--buckets', type=int, default=1,
+                      help='how many buckets to divide the time interval into (1-5000)')
+  parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
+                      help='specifies the format in which numbers are emitted')
+  args = parser.parse_args()
+  
+  output = args.output
+
+  # Get the API token.
+  apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+
+  # Send the query to the server.
+  response, rawResponse = sendRequest(args, '/api/numericQuery', {
+    "token": apiToken,
+    "queryType": "numeric",
+    "filter": args.filter,
+    "function": args.function,
+    "startTime": args.start,
+    "endTime": args.end,
+    "buckets": args.buckets
+    });
+  
+  printNumericResults(response['values'], args.output, rawResponse, response)
+
+
+# Implement the "scalyr timeseries-query" command.
+def commandTimeseriesQuery(parser):
+  # Parse the command-line arguments.
+  parser.add_argument('--timeseries', required=True,
+                      help='ID of the timeseries to query')
+  parser.add_argument('--start', required=True,
+                      help='beginning of the time range to query')
+  parser.add_argument('--end', default='',
+                      help='end of the time range to query')
+  parser.add_argument('--buckets', type=int, default=1,
+                      help='how many buckets to divide the time interval into (1-5000)')
+  parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
+                      help='specifies the format in which numbers are emitted')
+  args = parser.parse_args()
+  
+  output = args.output
+
+  # Get the API token.
+  apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+
+  # Send the query to the server.
+  response, rawResponse = sendRequest(args, '/api/timeseriesQuery', {
+    "token": apiToken,
+    "queries": [{
+      "queryType": "numeric",
+      "timeseriesId": args.timeseries,
+      "startTime": args.start,
+      "endTime": args.end,
+      "buckets": args.buckets
+    }]
+    });
+
+  # Print the results.
+  printNumericResults(response['results'][0]['values'], args.output, rawResponse, response)
+
+
+# Implement the "scalyr create-timeseries" command.
+def commandCreateTimeseries(parser):
+  # Parse the command-line arguments.
+  parser.add_argument('filter', nargs='?', default='',
+                      help='search term or filter expression')
+  parser.add_argument('--function', default='',
+                      help='the value to compute from the events matching the filter')
+  args = parser.parse_args()
+  
+  # Get the API token.
+  apiToken = getApiToken(args, 'scalyr_writeconfig_token', 'Write Config')
+
+  # Send the query to the server.
+  response, rawResponse = sendRequest(args, '/api/createTimeseries', {
+    "token": apiToken,
+    "queryType": "numeric",
+    "filter": args.filter,
+    "function": args.function
+    });
+  
+  print response['timeseriesId']
+
+
 # Define arguments that are the same for all commands
 parser = argparse.ArgumentParser(description='Scalyr command-line tool. See https://github.com/scalyr/scalyr-tool for documentation.')
-parser.add_argument('command', choices=['query', 'get-file', 'put-file', 'list-files'],
+parser.add_argument('command', choices=['query', 'numeric-query', 'timeseries-query', 'create-timeseries', 'get-file', 'put-file', 'list-files'],
                     help='specifies the action to be performed')
 parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
 parser.add_argument('--server', default='https://www.scalyr.com',
@@ -279,6 +385,12 @@ parser.add_argument('--verbose', action='store_true', default=False,
 command = sys.argv[1] if len(sys.argv) >= 2 else ""
 if command == 'query':
   commandQuery(parser)
+elif command == 'numeric-query':
+  commandNumericQuery(parser)
+elif command == 'timeseries-query':
+  commandTimeseriesQuery(parser)
+elif command == 'create-timeseries':
+  commandCreateTimeseries(parser)
 elif command == 'get-file':
   commandGetFile(parser)
 elif command == 'put-file':
@@ -287,6 +399,6 @@ elif command == 'list-files':
   commandListFiles(parser)
 else:
   print >> sys.stderr, 'Unknown command "%s".' % command
-  print >> sys.stderr, 'Please enter "query", "get-file", "put-file", or "list-files" as the first argument.'
+  print >> sys.stderr, 'Please enter "query", "numeric-query", "timeseries-query", "create-timeseries", "get-file", "put-file", or "list-files" as the first argument.'
   print >> sys.stderr, 'Append --help after the command name for additional information, e.g. "%s query --help".' % (sys.argv[0])
   exit(1)
