@@ -5,6 +5,7 @@ Command-line tool for accessing Scalyr services. Seven commands are currently su
 
 - **query**: Retrieve log data
 - **numeric-query**: Retrieve numeric / graph data
+- **facet-query**: Retrieve common values for a field
 - **timeseries-query**: Retrieve numeric / graph data from a timeseries
 - **create-timeseries**: Create a timeseries for fast numeric queries
 - **get-file**: Fetch a configuration file
@@ -164,6 +165,49 @@ Complete argument list:
         Prints the current version number of this tool.
     --verbose
         Writes detailed progress information to stderr.
+
+## Fetching facet counts
+
+The "facet-query' command allows you to retrieve the most common values for a field. For instance, you can
+find the most common URLs accessed on your site, the most common user-agent strings, or the most common
+response codes returned.
+
+Here are some usage examples:
+
+    curl 'https://www.scalyr.com/api/facetQuery?queryType=facet&field=uriPath&startTime=1h&token=XXX'
+
+    # Display the most common HTTP request URLs in the last 24 hours.
+    scalyr facet-query '$dataset="accesslog"' uriPath --start 24h
+    
+    # Display the most common HTTP response codes for requests to index.html.
+    scalyr facet-query 'uriPath="/index.html"' status --start 24h
+
+Complete argument list:
+
+    scalyr facet-query filter field --start xxx [options...]
+        The filter specifies which log records to process. It uses the same syntax as the "Expression"
+        field in the [log view](https://www.scalyr.com/events?mode=log).
+
+    --count=nnn
+        How many distinct values to return. You may specify a value from 1 to 1000; 100 is the default.
+    --start=xxx
+        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field is
+        the log view. You must specify this argument.
+    --end=xxx
+        Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
+        view. Defaults to the current time.
+    --output=csv|json|json-pretty
+        How to display the results. 'csv' prints all values on a single line, separated by commas.
+        'json' prints the raw JSON response from the server, as documented at
+        https://www.scalyr.com/help/api#numericQuery. 'json-pretty' also prints the JSON response,
+        but prettyprinted.
+    --token=xxx
+        Specify the API token. For this command, should be a "Read Logs" token.
+    --version
+        Prints the current version number of this tool.
+    --verbose
+        Writes detailed progress information to stderr.
+
 
 #### Usage limits
 

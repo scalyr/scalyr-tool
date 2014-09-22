@@ -193,7 +193,7 @@ def commandQuery(parser):
   response, rawResponse = sendRequest(args, '/api/query', {
     "token": apiToken,
     "queryType": "log",
-    "filter": args.filter,
+    "filter": args.filter[0],
     "startTime": args.start,
     "endTime": args.end,
     "maxCount": args.count,
@@ -278,7 +278,7 @@ def printNumericResults(values, outputFormat, rawResponse, response):
 # Implement the "scalyr numeric-query" command.
 def commandNumericQuery(parser):
   # Parse the command-line arguments.
-  parser.add_argument('filter', nargs='?', default='',
+  parser.add_argument('filter', nargs=1, default='',
                       help='search term or filter expression')
   parser.add_argument('--function', default='',
                       help='the value to compute from the events matching the filter')
@@ -301,7 +301,7 @@ def commandNumericQuery(parser):
   response, rawResponse = sendRequest(args, '/api/numericQuery', {
     "token": apiToken,
     "queryType": "numeric",
-    "filter": args.filter,
+    "filter": args.filter[0],
     "function": args.function,
     "startTime": args.start,
     "endTime": args.end,
@@ -309,6 +309,57 @@ def commandNumericQuery(parser):
     });
   
   printNumericResults(response['values'], args.output, rawResponse, response)
+
+
+# Print the output of a facet-query command.
+def printFacetResults(matchCount, values, outputFormat, rawResponse, response):
+    if outputFormat == 'json':
+        print rawResponse
+    elif outputFormat == 'json-pretty':
+        print json.dumps(response, sort_keys=True, indent=2, separators=(',', ': '))
+    else:
+        # csv
+        csvBuffer = StringIO.StringIO()
+        csvWriter = csv.writer(csvBuffer, dialect='excel')
+        csvWriter.writerow(['count', 'value'])
+        for i in range(len(values)):
+            valueAndCount = values[i]
+            csvWriter.writerow([valueAndCount.get('count'), valueAndCount.get('value')])
+        print csvBuffer.getvalue()
+
+
+# Implement the "scalyr facet-query" command.
+def commandFacetQuery(parser):
+    # Parse the command-line arguments.
+    parser.add_argument('filter', nargs=1,
+                        help='search term or filter expression')
+    parser.add_argument('field', nargs=1,
+                        help='the field whose values should be retrieved')
+    parser.add_argument('--count', type=int, default=100,
+                        help='maximum number of unique values to retrieve (1-1000)')
+    parser.add_argument('--start', required=True,
+                        help='beginning of the time range to query')
+    parser.add_argument('--end', default='',
+                        help='end of the time range to query')
+    parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
+                        help='specifies the format in which values are emitted')
+    args = parser.parse_args()
+
+    # Get the API token.
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+
+    # Send the query to the server.
+    response, rawResponse = sendRequest(args, '/api/facetQuery', {
+        "token": apiToken,
+        "queryType": "facet",
+        "filter": args.filter[0],
+        "field": args.field[0],
+        "maxCount": args.count,
+        "startTime": args.start,
+        "endTime": args.end
+    });
+
+    printFacetResults(response['matchCount'], response['values'], args.output, rawResponse, response)
 
 
 # Implement the "scalyr timeseries-query" command.
@@ -350,7 +401,7 @@ def commandTimeseriesQuery(parser):
 # Implement the "scalyr create-timeseries" command.
 def commandCreateTimeseries(parser):
   # Parse the command-line arguments.
-  parser.add_argument('filter', nargs='?', default='',
+  parser.add_argument('filter', nargs=1, default='',
                       help='search term or filter expression')
   parser.add_argument('--function', default='',
                       help='the value to compute from the events matching the filter')
@@ -363,7 +414,7 @@ def commandCreateTimeseries(parser):
   response, rawResponse = sendRequest(args, '/api/createTimeseries', {
     "token": apiToken,
     "queryType": "numeric",
-    "filter": args.filter,
+    "filter": args.filter[0],
     "function": args.function
     });
   
@@ -372,7 +423,7 @@ def commandCreateTimeseries(parser):
 
 # Define arguments that are the same for all commands
 parser = argparse.ArgumentParser(description='Scalyr command-line tool. See https://github.com/scalyr/scalyr-tool for documentation.')
-parser.add_argument('command', choices=['query', 'numeric-query', 'timeseries-query', 'create-timeseries', 'get-file', 'put-file', 'list-files'],
+parser.add_argument('command', choices=['query', 'numeric-query', 'facet-query', 'timeseries-query', 'create-timeseries', 'get-file', 'put-file', 'list-files'],
                     help='specifies the action to be performed')
 parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
 parser.add_argument('--server', default='https://www.scalyr.com',
@@ -387,6 +438,8 @@ if command == 'query':
   commandQuery(parser)
 elif command == 'numeric-query':
   commandNumericQuery(parser)
+elif command == 'facet-query':
+    commandFacetQuery(parser)
 elif command == 'timeseries-query':
   commandTimeseriesQuery(parser)
 elif command == 'create-timeseries':
@@ -399,6 +452,6 @@ elif command == 'list-files':
   commandListFiles(parser)
 else:
   print >> sys.stderr, 'Unknown command "%s".' % command
-  print >> sys.stderr, 'Please enter "query", "numeric-query", "timeseries-query", "create-timeseries", "get-file", "put-file", or "list-files" as the first argument.'
+  print >> sys.stderr, 'Please enter "query", "numeric-query", "facet-query", "timeseries-query", "create-timeseries", "get-file", "put-file", or "list-files" as the first argument.'
   print >> sys.stderr, 'Append --help after the command name for additional information, e.g. "%s query --help".' % (sys.argv[0])
   exit(1)
