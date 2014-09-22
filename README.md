@@ -17,7 +17,7 @@ Command-line tool for accessing Scalyr services. Seven commands are currently su
 
 Simply download the script file and make it executable. For instance:
 
-    curl https://raw.github.com/scalyr/scalyr-tool/master/scalyr > scalyr
+    curl https://raw.githubusercontent.com/scalyr/scalyr-tool/master/scalyr > scalyr
     chmod u+x scalyr
     mv scalyr (some directory on your command path)
 
