@@ -170,7 +170,8 @@ Complete argument list:
 
 The "facet-query' command allows you to retrieve the most common values for a field. For instance, you can
 find the most common URLs accessed on your site, the most common user-agent strings, or the most common
-response codes returned.
+response codes returned. (If a very large number of events match your search criteria, the results will be
+based on a random subsample of at least 500,000 matching events.)
 
 Here are some usage examples:
 
