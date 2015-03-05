@@ -193,7 +193,7 @@ def commandQuery(parser):
   response, rawResponse = sendRequest(args, '/api/query', {
     "token": apiToken,
     "queryType": "log",
-    "filter": args.filter[0],
+    "filter": args.filter,
     "startTime": args.start,
     "endTime": args.end,
     "maxCount": args.count,
@@ -301,7 +301,7 @@ def commandNumericQuery(parser):
   response, rawResponse = sendRequest(args, '/api/numericQuery', {
     "token": apiToken,
     "queryType": "numeric",
-    "filter": args.filter[0],
+    "filter": args.filter,
     "function": args.function,
     "startTime": args.start,
     "endTime": args.end,
@@ -352,8 +352,8 @@ def commandFacetQuery(parser):
     response, rawResponse = sendRequest(args, '/api/facetQuery', {
         "token": apiToken,
         "queryType": "facet",
-        "filter": args.filter[0],
-        "field": args.field[0],
+        "filter": args.filter,
+        "field": args.field,
         "maxCount": args.count,
         "startTime": args.start,
         "endTime": args.end
@@ -414,44 +414,54 @@ def commandCreateTimeseries(parser):
   response, rawResponse = sendRequest(args, '/api/createTimeseries', {
     "token": apiToken,
     "queryType": "numeric",
-    "filter": args.filter[0],
+    "filter": args.filter,
     "function": args.function
     });
   
   print response['timeseriesId']
 
 
-# Define arguments that are the same for all commands
-parser = argparse.ArgumentParser(description='Scalyr command-line tool. See https://github.com/scalyr/scalyr-tool for documentation.')
-parser.add_argument('command', choices=['query', 'numeric-query', 'facet-query', 'timeseries-query', 'create-timeseries', 'get-file', 'put-file', 'list-files'],
-                    help='specifies the action to be performed')
-parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
-parser.add_argument('--server', default='https://www.scalyr.com',
-                    help='URL for the Scalyr API server')
-parser.add_argument('--token', default='',
-                    help='API access token')
-parser.add_argument('--verbose', action='store_true', default=False,
-                    help='enables additional diagnostic output')
+if __name__ == '__main__':
+  # All available commands
+  all_commands = {
+    'query': commandQuery,
+    'numeric-query': commandNumericQuery,
+    'facet-query': commandFacetQuery,
+    'timerseries-query': commandTimeseriesQuery,
+    'create-timeseries': commandCreateTimeseries,
+    'get-file': commandGetFile,
+    'put-file': commandPutFile,
+    'list-files': commandListFiles,
+  }
 
-command = sys.argv[1] if len(sys.argv) >= 2 else ""
-if command == 'query':
-  commandQuery(parser)
-elif command == 'numeric-query':
-  commandNumericQuery(parser)
-elif command == 'facet-query':
-    commandFacetQuery(parser)
-elif command == 'timeseries-query':
-  commandTimeseriesQuery(parser)
-elif command == 'create-timeseries':
-  commandCreateTimeseries(parser)
-elif command == 'get-file':
-  commandGetFile(parser)
-elif command == 'put-file':
-  commandPutFile(parser)
-elif command == 'list-files':
-  commandListFiles(parser)
-else:
-  print >> sys.stderr, 'Unknown command "%s".' % command
-  print >> sys.stderr, 'Please enter "query", "numeric-query", "facet-query", "timeseries-query", "create-timeseries", "get-file", "put-file", or "list-files" as the first argument.'
-  print >> sys.stderr, 'Append --help after the command name for additional information, e.g. "%s query --help".' % (sys.argv[0])
-  exit(1)
+  # Define arguments that are the same for all commands
+  parser = argparse.ArgumentParser(description='Scalyr command-line tool. See https://github.com/scalyr/scalyr-tool for documentation.')
+  parser.add_argument('command', choices=all_commands.keys(),
+                      help='specifies the action to be performed')
+  parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
+  parser.add_argument('--server', default='https://www.scalyr.com',
+                      help='URL for the Scalyr API server')
+  parser.add_argument('--token', default='',
+                      help='API access token')
+  parser.add_argument('--verbose', action='store_true', default=False,
+                      help='enables additional diagnostic output')
+
+  command = None
+  # Because the options are command-specific, we cannot fully parse the arguments until we know the
+  # command... but we also need to know which command to invoke so that we can add the command-specific
+  # options and then execute the command.  So, here, we just guess what the command is by looking over all the
+  # arguments and seeing the first one that matches one of the possible commands.
+  for arg in sys.argv[1:]:
+      if arg in all_commands:
+          command = arg
+
+  # If we could not find a possible command, then just try to parse the commandline with the current options, which
+  # we know will fail since there's no valid value for 'command'.
+  if command is None:
+      tmp_args = parser.parse_args()
+
+  # Invoke the command's function from the all_command's mapping.  We really should change this to a more
+  # object oriented approach.
+  command_func = all_commands[command]
+  command_func(parser)
+
