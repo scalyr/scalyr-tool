@@ -163,7 +163,7 @@ def commandListFiles(parser):
 # Implement the "scalyr query" command.
 def commandQuery(parser):
   # Parse the command-line arguments.
-  parser.add_argument('filter', nargs='?', default='',
+  parser.add_argument('filter', nargs='1', default='',
                       help='search term or filter expression')
   parser.add_argument('--start', default='',
                       help='beginning of the time range to query')
@@ -193,7 +193,7 @@ def commandQuery(parser):
   response, rawResponse = sendRequest(args, '/api/query', {
     "token": apiToken,
     "queryType": "log",
-    "filter": args.filter,
+    "filter": args.filter[0],
     "startTime": args.start,
     "endTime": args.end,
     "maxCount": args.count,
@@ -301,7 +301,7 @@ def commandNumericQuery(parser):
   response, rawResponse = sendRequest(args, '/api/numericQuery', {
     "token": apiToken,
     "queryType": "numeric",
-    "filter": args.filter,
+    "filter": args.filter[0],
     "function": args.function,
     "startTime": args.start,
     "endTime": args.end,
@@ -352,7 +352,7 @@ def commandFacetQuery(parser):
     response, rawResponse = sendRequest(args, '/api/facetQuery', {
         "token": apiToken,
         "queryType": "facet",
-        "filter": args.filter,
+        "filter": args.filter[0],
         "field": args.field,
         "maxCount": args.count,
         "startTime": args.start,
@@ -414,7 +414,7 @@ def commandCreateTimeseries(parser):
   response, rawResponse = sendRequest(args, '/api/createTimeseries', {
     "token": apiToken,
     "queryType": "numeric",
-    "filter": args.filter,
+    "filter": args.filter[0],
     "function": args.function
     });
   
@@ -427,7 +427,8 @@ if __name__ == '__main__':
     'query': commandQuery,
     'numeric-query': commandNumericQuery,
     'facet-query': commandFacetQuery,
-    'timerseries-query': commandTimeseriesQuery,
+    'timeseries-query': commandTimeseriesQuery,
+    'timerseries-query': commandTimeseriesQuery, # mispelling; kept for backwards compatibility
     'create-timeseries': commandCreateTimeseries,
     'get-file': commandGetFile,
     'put-file': commandPutFile,
