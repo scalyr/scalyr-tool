@@ -83,6 +83,10 @@ Complete argument list:
         How to display the log records (see below).
     --version
         Prints the current version number of this tool.
+    --priority=high|low
+        Specifies the execution priority for this query; defaults to "high". Use "low" for scripted
+        operations where a delay of a second or so is acceptable. Rate limits are tighter for high-
+        priority queries.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
     --verbose
@@ -159,6 +163,10 @@ Complete argument list:
         'json' prints the raw JSON response from the server, as documented at
         https://www.scalyr.com/help/api#numericQuery. 'json-pretty' also prints the JSON response,
         but prettyprinted.
+    --priority=high|low
+        Specifies the execution priority for this query; defaults to "high". Use "low" for scripted
+        operations where a delay of a second or so is acceptable. Rate limits are tighter for high-
+        priority queries.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
     --version
@@ -202,6 +210,10 @@ Complete argument list:
         'json' prints the raw JSON response from the server, as documented at
         https://www.scalyr.com/help/api#numericQuery. 'json-pretty' also prints the JSON response,
         but prettyprinted.
+    --priority=high|low
+        Specifies the execution priority for this query; defaults to "high". Use "low" for scripted
+        operations where a delay of a second or so is acceptable. Rate limits are tighter for high-
+        priority queries.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
     --version
@@ -251,6 +263,10 @@ Complete argument list:
         'json' prints the raw JSON response from the server, as documented at
         https://www.scalyr.com/help/api#numericQuery. 'json-pretty' also prints the JSON response,
         but prettyprinted.
+    --priority=high|low
+        Specifies the execution priority for this query; defaults to "high". Use "low" for scripted
+        operations where a delay of a second or so is acceptable. Rate limits are tighter for high-
+        priority queries.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
     --version

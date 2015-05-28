@@ -163,7 +163,7 @@ def commandListFiles(parser):
 # Implement the "scalyr query" command.
 def commandQuery(parser):
   # Parse the command-line arguments.
-  parser.add_argument('filter', nargs='1', default='',
+  parser.add_argument('filter', nargs='?', default='',
                       help='search term or filter expression')
   parser.add_argument('--start', default='',
                       help='beginning of the time range to query')
@@ -177,6 +177,9 @@ def commandQuery(parser):
                       help='comma-delimited list of columns to display; defaults to all')
   parser.add_argument('--output', choices=['singleline', 'multiline', 'csv', 'json', 'json-pretty'], default='multiline',
                       help='specifies the format in which matching log messages are displayed')
+  parser.add_argument('--priority', choices=['high', 'low'], default='high',
+                      help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
+
   args = parser.parse_args()
 
   columns = args.columns
@@ -193,12 +196,13 @@ def commandQuery(parser):
   response, rawResponse = sendRequest(args, '/api/query', {
     "token": apiToken,
     "queryType": "log",
-    "filter": args.filter[0],
+    "filter": args.filter,
     "startTime": args.start,
     "endTime": args.end,
     "maxCount": args.count,
     "pageMode": args.mode,
     "columns": columns,
+    "priority": args.priority
     });
 
 
@@ -290,6 +294,8 @@ def commandNumericQuery(parser):
                       help='how many buckets to divide the time interval into (1-5000)')
   parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
                       help='specifies the format in which numbers are emitted')
+  parser.add_argument('--priority', choices=['high', 'low'], default='high',
+                      help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
   args = parser.parse_args()
   
   output = args.output
@@ -305,7 +311,8 @@ def commandNumericQuery(parser):
     "function": args.function,
     "startTime": args.start,
     "endTime": args.end,
-    "buckets": args.buckets
+    "buckets": args.buckets,
+    "priority": args.priority
     });
   
   printNumericResults(response['values'], args.output, rawResponse, response)
@@ -343,6 +350,8 @@ def commandFacetQuery(parser):
                         help='end of the time range to query')
     parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
                         help='specifies the format in which values are emitted')
+    parser.add_argument('--priority', choices=['high', 'low'], default='high',
+                        help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
     args = parser.parse_args()
 
     # Get the API token.
@@ -353,10 +362,11 @@ def commandFacetQuery(parser):
         "token": apiToken,
         "queryType": "facet",
         "filter": args.filter[0],
-        "field": args.field,
+        "field": args.field[0],
         "maxCount": args.count,
         "startTime": args.start,
-        "endTime": args.end
+        "endTime": args.end,
+        "priority": args.priority
     });
 
     printFacetResults(response['matchCount'], response['values'], args.output, rawResponse, response)
@@ -375,6 +385,8 @@ def commandTimeseriesQuery(parser):
                       help='how many buckets to divide the time interval into (1-5000)')
   parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
                       help='specifies the format in which numbers are emitted')
+  parser.add_argument('--priority', choices=['high', 'low'], default='high',
+                      help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
   args = parser.parse_args()
   
   output = args.output
@@ -390,7 +402,8 @@ def commandTimeseriesQuery(parser):
       "timeseriesId": args.timeseries,
       "startTime": args.start,
       "endTime": args.end,
-      "buckets": args.buckets
+      "buckets": args.buckets,
+      "priority": args.priority
     }]
     });
 
