@@ -147,7 +147,8 @@ Complete argument list:
         example: 'mean(x)' or 'median(responseTime)', if x and responseTime are fields of your log.
         You can also specify a simple field name, such as 'responseTime', to return the mean value of
         that field. If you omit the function argument, the rate of matching events per second will be
-        returned. Specifying 'rate' yields the same result.
+        returned. Specifying 'rate' yields the same result. Finally, you can specify "count", to compute
+        the number of matching events in each time period (as defined by the "buckets" option).
     --start=xxx
         Specify the beginning of the time range to query. Uses the same syntax as the "Start" field is
         the log view. You must specify this argument.
@@ -305,7 +306,10 @@ Complete argument list:
         example: 'mean(x)' or 'median(responseTime)', if x and responseTime are fields of your log.
         You can also specify a simple field name, such as 'responseTime', to return the mean value of
         that field. If you omit the function argument, the rate of matching events per second will be
-        returned. Specifying 'rate' yields the same result.
+        returned. Specifying 'rate' yields the same result. Finally, you can specify "count", to compute
+        the number of matching events in each time period . (Note that timeseries are computed on
+        30-secound boundaries, so if the time span you query doesn't line up on a 30-second boundary,
+        Scalyr will interpolate. As a result, counts may not be integers.)
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
     --version
@@ -381,6 +385,11 @@ Complete argument list:
         Specify the API token. For this command, should be a "Read Config" token.
     --verbose
         Writes detailed progress information to stderr.
+
+
+## TODO
+
+Add support for the "filter" and "function" arguments to https://www.scalyr.com/help/api#timeseriesQuery.
 
 
 ## Revision History
