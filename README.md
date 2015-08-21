@@ -66,7 +66,7 @@ Complete argument list:
         field in the [log view](https://www.scalyr.com/events?mode=log).
 
     --start=xxx
-        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field is
+        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
         the log view. Defaults to 1 day ago, or to 1 day before the end time if an end time is given.
     --end=xxx
         Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
@@ -150,7 +150,7 @@ Complete argument list:
         returned. Specifying 'rate' yields the same result. Finally, you can specify "count", to compute
         the number of matching events in each time period (as defined by the "buckets" option).
     --start=xxx
-        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field is
+        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
         the log view. You must specify this argument.
     --end=xxx
         Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
@@ -201,7 +201,7 @@ Complete argument list:
     --count=nnn
         How many distinct values to return. You may specify a value from 1 to 1000; 100 is the default.
     --start=xxx
-        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field is
+        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
         the log view. You must specify this argument.
     --end=xxx
         Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
@@ -250,7 +250,7 @@ Complete argument list:
     scalyr timeseries-query timeseriesid --start xxx [options...]
 
     --start=xxx
-        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field is
+        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
         the log view. You must specify this argument.
     --end=xxx
         Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
