@@ -78,7 +78,7 @@ Complete argument list:
         start time is given, otherwise to tail.
     --columns="..."
         Which log attributes to display. Used mainly for logs for which you have specified a parser to
-        extract attributs from the raw text. Specify one or more attribute names, separated by commas.
+        extract attributes from the raw text. Specify one or more attribute names, separated by commas.
     --output=multiline|singleline|csv|json|json-pretty
         How to display the log records (see below).
     --version
