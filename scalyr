@@ -329,10 +329,11 @@ def commandTail( parser ):
         #get a list of matches that we haven't seen yet
         new_matches = [match for match in response['matches'] if get_match_unique_id( match ) not in previous_matches]
 
-        #if we have a full list, then some logging output has been dropped
-        #so let the user know
+        #if the "not in previous_matches" test didn't find any duplicates, that means there have been
+        #so many new log events that our new query didn't overlap with the previous query. Therefore, we'll
+        #have missed some of the intervening messages.
         if not first and len( new_matches ) >= max_matches:
-            print "[WARN] Too much logging output.  Some log lines have been dropped"
+            print "[WARN] Too many messages for tail to keep up; some messages are not being shown."
 
         #print out any new matches, and add the ids to the list of matches we have already seen
         for match in new_matches:
@@ -350,7 +351,7 @@ def commandTail( parser ):
 
         current_time = time.time()
         first = False
-    print "----\nLive tail expired.\n    Please contact support@scalyr.com if you require a longer live tail\n"
+    print "----\nTo minimize server load, live tail expires after 10 minutes. If this is bothersome, please let us know at support@scalyr.com.\n"
 
 # Implement the "scalyr numeric-query" command.
 def commandNumericQuery(parser):
