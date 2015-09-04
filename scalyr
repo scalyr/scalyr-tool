@@ -16,6 +16,8 @@ import socket
 import csv
 import StringIO
 
+from collections import deque
+
 
 # Define some constants
 TOOL_VERSION = "0.1"
@@ -240,33 +242,37 @@ def commandQuery(parser):
   else:
     # Readable text format (singleline or multiline)
     for i in range(len(matches)):
-      match = matches[i]
+      printReadableRow( args.output, matches[i] )
       
-      rawTimestamp = match.get('timestamp')
-      timestamp = ""
-      if rawTimestamp:
-        timestamp = str(datetime.datetime.fromtimestamp(long(rawTimestamp) / 1E9)) + ": "
 
-      rawSeverity = match.get('severity')
-      severity = ""
-      if rawSeverity or 0 == rawSeverity:
-        severity = ['L', 'K', 'J', 'I', 'W', 'E', 'F'][rawSeverity] + " ";
+def printReadableRow( output, match ):
+  rawTimestamp = match.get('timestamp')
+  timestamp = ""
+  if rawTimestamp:
+    timestamp = str(datetime.datetime.fromtimestamp(long(rawTimestamp) / 1E9)) + ": "
 
-      message = match.get('message')
-      if not message:
-        message = ''
-      attributes = match.get('attributes')
+  rawSeverity = match.get('severity')
+  severity = ""
+  if rawSeverity or 0 == rawSeverity:
+    severity = ['L', 'K', 'J', 'I', 'W', 'E', 'F'][rawSeverity] + " ";
 
-      if args.output == 'singleline':
-        print ('%s%s%s' % (timestamp, severity, message)),
-        for attrName in sorted(attributes.keys()):
-          print (' %s=%s' % (attrName, attributes[attrName])),
-        print ''
-      else:
-        print '%s%s%s' % (timestamp, severity, message)
-        for attrName in sorted(attributes.keys()):
-          print '  %s = %s' % (attrName, attributes[attrName])
+  #get message, minus any trailing whitespace
+  message = match.get('message').rstrip()
+  if not message:
+    message = ''
+  attributes = match.get('attributes')
 
+  if output == 'singleline':
+    print ('%s%s%s' % (timestamp, severity, message)),
+    for attrName in sorted(attributes.keys()):
+      print (' %s=%s' % (attrName, attributes[attrName])),
+    print ''
+  elif output  == 'messageonly':
+    print message
+  else:
+    print '%s%s%s' % (timestamp, severity, message)
+    for attrName in sorted(attributes.keys()):
+      print '  %s = %s' % (attrName, attributes[attrName])
 
 # Print the output of a numeric-query or timeseries-query command.
 def printNumericResults(values, outputFormat, rawResponse, response):
@@ -278,6 +284,73 @@ def printNumericResults(values, outputFormat, rawResponse, response):
     # csv
     print ','.join(map(str, values))
 
+def get_match_unique_id( match ):
+    return (match['timestamp'], match['session'])
+
+# Implement the 'scalyr tail' command
+def commandTail( parser ):
+    # Build the args
+    parser.add_argument('filter', nargs='?', default='',
+                      help='search term or filter expression')
+    parser.add_argument('--output', choices=['singleline', 'multiline', 'messageonly'], default='singleline',
+                      help='specifies the format in which matching log messages are displayed')
+
+    # Get the API token
+    args = parser.parse_args()
+    apiToken = getApiToken( args, 'scalyr_readlog_token', 'Read Logs' )
+
+    readback_limit = 10*60 #10 minutes
+    maximum_tail_time = 10*60 #10 minutes
+    max_matches = 1000
+    poll_interval = 10
+
+    previous_matches = deque( maxlen=max_matches )
+
+    start_time = time.time()
+    current_time = time.time()
+    first = True
+
+    print "Beginning live tail.."
+    while current_time - start_time < maximum_tail_time:
+
+        # Send the query to the server.
+        response, rawResponse = sendRequest(args, '/api/query', {
+        "token": apiToken,
+        "queryType": "log",
+        "filter": args.filter,
+        "startTime": int( current_time - readback_limit ),
+        "endTime": int( current_time ),
+        "maxCount": max_matches,
+        "pageMode": "tail",
+        "columns": '',
+        "priority": "low"
+        });
+
+        #get a list of matches that we haven't seen yet
+        new_matches = [match for match in response['matches'] if get_match_unique_id( match ) not in previous_matches]
+
+        #if we have a full list, then some logging output has been dropped
+        #so let the user know
+        if not first and len( new_matches ) >= max_matches:
+            print "[WARN] Too much logging output.  Some log lines have been dropped"
+
+        #print out any new matches, and add the ids to the list of matches we have already seen
+        for match in new_matches:
+            if not first:
+                printReadableRow( args.output, match )
+            previous_matches.append( get_match_unique_id( match ) )
+
+
+        #sleep for any remaining time
+        new_time = time.time()
+        elapsed_time = new_time - current_time
+        remaining_time = poll_interval - elapsed_time
+        if not first and remaining_time > 0:
+            time.sleep( remaining_time )
+
+        current_time = time.time()
+        first = False
+    print "----\nLive tail expired.\n    Please contact support@scalyr.com if you require a longer live tail\n"
 
 # Implement the "scalyr numeric-query" command.
 def commandNumericQuery(parser):
@@ -438,6 +511,7 @@ if __name__ == '__main__':
   # All available commands
   all_commands = {
     'query': commandQuery,
+    'tail': commandTail,
     'numeric-query': commandNumericQuery,
     'facet-query': commandFacetQuery,
     'timeseries-query': commandTimeseriesQuery,

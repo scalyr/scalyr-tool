@@ -11,6 +11,7 @@ Command-line tool for accessing Scalyr services. Seven commands are currently su
 - **get-file**: Fetch a configuration file
 - **put-file**: Create or update a configuration file
 - **list-files**: List all configuration files
+- **tail**: Provide a live 'tail' of a log
 
 
 ## Installation
@@ -35,7 +36,6 @@ for "Read Logs", "Read Config", and "Write Config" tokens, respectively.
 
 After adding these to .bash_profile, make sure to also paste them into your current console session so
 they take effect immediately.
-
 
 ## Querying logs
 
@@ -116,6 +116,45 @@ replenished at 36,000 milliseconds per hour. If you exceed this limit, your quer
 refused. (Your other uses of Scalyr, such as log uploading or queries via the web site, will not be impacted.)
 If you need a higher limit, drop us a line at support@scalyr.com.
 
+## Tailing logs
+
+The 'tail' command is similar to the 'query' command, except it runs continually, printing query results to stdout.
+
+Here are some usage examples:
+
+    # Display a live tail of all log records
+    scalyr tail
+
+    # Display a live tail of all log records from host100.
+    scalyr tail '$serverHost="host100"'
+
+    # Display a live tail of all log records containing the text [WARN]
+    #   Note: the [] need to be quoted to be processed as text by Scalyr.
+    #   You also need to quote/escape the quotes so they are not eaten by the shell
+    scalyr tail '"[WARN]"'
+
+    # Display a live tail of only the log messages, and not any attributes
+    scalyr tail --output messageonly
+
+Complete argument list:
+
+    scalyr tail [filter] [options...]
+        The filter specifies which log records to return. It uses the same syntax as the "Expression"
+        field in the [log view](https://www.scalyr.com/events?mode=log).
+
+    --output=multiline|singleline|messageonly
+        Similar to the multiline and singleline options for the 'query' command, but also has a 'messageonly'
+        that will only display the raw log message, and not any additional attributes.
+
+#### Usage limits
+
+The 'tail' command is currently restricted to read a maximum of 1,000 log records per 10 seconds.  Additionally,
+tails will automatically expire after 10 mins.  Please contact support@scalyr.com if you require an increase to
+these limits.
+
+#### Server clocks
+
+If the clocks on the servers sending log messages to Scalyr are significantly out of sync then some messages may not appear in the live tail.  For example, if you send us a new log message with a timestamp old enough that it's not in the 1,000 most recent messages when it arrives at the Scalyr servers, then it will not be displayed by the live tail tool.
 
 ## Fetching numeric data
 
