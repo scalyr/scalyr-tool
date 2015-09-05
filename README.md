@@ -133,8 +133,8 @@ Here are some usage examples:
     #   You also need to quote/escape the quotes so they are not eaten by the shell
     scalyr tail '"[WARN]"'
 
-    # Display a live tail of only the log messages, and not any attributes
-    scalyr tail --output messageonly
+    # Display a live tail of log messages, including attributes
+    scalyr tail --output multiline
 
 Complete argument list:
 
@@ -144,7 +144,8 @@ Complete argument list:
 
     --output=multiline|singleline|messageonly
         Similar to the multiline and singleline options for the 'query' command, but also has a 'messageonly'
-        that will only display the raw log message, and not any additional attributes.
+        mode that will only display the raw log message, and not any additional attributes.
+        Defaults to 'messageonly'.
 
 #### Usage limits
 

@@ -260,6 +260,9 @@ def printReadableRow( output, match ):
   message = match.get('message').rstrip()
   if not message:
     message = ''
+    if output == 'messageonly':
+        output = 'singleline'
+
   attributes = match.get('attributes')
 
   if output == 'singleline':
@@ -287,28 +290,24 @@ def printNumericResults(values, outputFormat, rawResponse, response):
 def get_match_unique_id( match ):
     return (match['timestamp'], match['session'])
 
-# Implement the 'scalyr tail' command
-def commandTail( parser ):
-    # Build the args
-    parser.add_argument('filter', nargs='?', default='',
-                      help='search term or filter expression')
-    parser.add_argument('--output', choices=['singleline', 'multiline', 'messageonly'], default='singleline',
-                      help='specifies the format in which matching log messages are displayed')
+def liveTail( apiToken, args ):
 
-    # Get the API token
-    args = parser.parse_args()
-    apiToken = getApiToken( args, 'scalyr_readlog_token', 'Read Logs' )
-
+    maximum_tail_time=10*60
     readback_limit = 10*60 #10 minutes
-    maximum_tail_time = 10*60 #10 minutes
     max_matches = 1000
     poll_interval = 10
 
-    previous_matches = deque( maxlen=max_matches )
+    initial_lines = args.lines
+
+    if initial_lines > max_matches:
+        print "Output of previous lines is limited to 1000 lines only"
+        initial_lines = max_matches
 
     start_time = time.time()
     current_time = time.time()
     first = True
+
+    previous_matches = deque( maxlen=max_matches )
 
     print "Beginning live tail.."
     while current_time - start_time < maximum_tail_time:
@@ -332,26 +331,48 @@ def commandTail( parser ):
         #if the "not in previous_matches" test didn't find any duplicates, that means there have been
         #so many new log events that our new query didn't overlap with the previous query. Therefore, we'll
         #have missed some of the intervening messages.
-        if not first and len( new_matches ) >= max_matches:
+        row_count = len( new_matches )
+        if not first and row_count >= max_matches:
             print "[WARN] Too many messages for tail to keep up; some messages are not being shown."
 
-        #print out any new matches, and add the ids to the list of matches we have already seen
+        #print out any new matches, and add the ids to the list of matches we have already seen.
+        #Also keep track of how many rows we have seen already, so the first time through we can
+        #print the last few lines
         for match in new_matches:
-            if not first:
+            if not first or row_count <= initial_lines:
                 printReadableRow( args.output, match )
             previous_matches.append( get_match_unique_id( match ) )
-
+            row_count -= 1
 
         #sleep for any remaining time
         new_time = time.time()
         elapsed_time = new_time - current_time
         remaining_time = poll_interval - elapsed_time
-        if not first and remaining_time > 0:
+        if remaining_time > 0:
             time.sleep( remaining_time )
 
         current_time = time.time()
         first = False
     print "----\nTo minimize server load, live tail expires after 10 minutes. If this is bothersome, please let us know at support@scalyr.com.\n"
+
+# Implement the 'scalyr tail' command
+def commandTail( parser ):
+    # Build the args
+    parser.add_argument('filter', nargs='?', default='',
+                      help='search term or filter expression')
+    parser.add_argument('--output', choices=['singleline', 'multiline', 'messageonly'], default='messageonly',
+                      help='specifies the format in which matching log messages are displayed')
+    parser.add_argument('--lines', '-n', type=int, default=10,
+                      help='Output the previous \'n\' lines at the start of the tail')
+
+    # Get the API token
+    args = parser.parse_args()
+    apiToken = getApiToken( args, 'scalyr_readlog_token', 'Read Logs' )
+
+    try:
+        liveTail( apiToken, args )
+    except KeyboardInterrupt:
+        print "\nLive tail has quit."
 
 # Implement the "scalyr numeric-query" command.
 def commandNumericQuery(parser):
