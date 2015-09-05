@@ -142,7 +142,11 @@ Complete argument list:
         The filter specifies which log records to return. It uses the same syntax as the "Expression"
         field in the [log view](https://www.scalyr.com/events?mode=log).
 
-    --output=multiline|singleline|messageonly
+    --lines K,
+    -n K
+        Output the previous K lines when starting the tail.  Defaults to 10.
+
+    --output multiline|singleline|messageonly
         Similar to the multiline and singleline options for the 'query' command, but also has a 'messageonly'
         mode that will only display the raw log message, and not any additional attributes.
         Defaults to 'messageonly'.
