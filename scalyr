@@ -257,11 +257,13 @@ def printReadableRow( output, match ):
     severity = ['L', 'K', 'J', 'I', 'W', 'E', 'F'][rawSeverity] + " ";
 
   #get message, minus any trailing whitespace
-  message = match.get('message').rstrip()
+  message = match.get('message')
   if not message:
     message = ''
     if output == 'messageonly':
         output = 'singleline'
+
+  message = message.rstrip()
 
   attributes = match.get('attributes')
 
