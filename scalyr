@@ -5,14 +5,10 @@
 import sys
 import os
 import argparse
-import re
 import time
 import datetime
 import httplib
-import urllib
-import urllib2
 import json
-import socket
 import csv
 import StringIO
 
@@ -22,19 +18,20 @@ from collections import deque
 # Define some constants
 TOOL_VERSION = "0.1"
 
+
 # Return the API token from the command line or environment variables.
 def getApiToken(args, environmentVariableName, permissionType):
-  apiToken = args.token
-  if apiToken == '':
-    apiToken = os.getenv(environmentVariableName, '')
-  if apiToken == '':
-    print >> sys.stderr, 'Please specify an API token granting ' + permissionType + ' permission. You can place it in the'
-    print >> sys.stderr, 'command line as --token "XXX", or in the environment variable "' + environmentVariableName + '".'
-    print >> sys.stderr, 'Use of an environment variable is recommended, to avoid displaying your API token in the'
-    print >> sys.stderr, 'console or your command history. You can find API tokens at https://www.scalyr.com/keys.'
-    sys.exit(1)
+    apiToken = args.token
+    if apiToken == '':
+        apiToken = os.getenv(environmentVariableName, '')
+    if apiToken == '':
+        print >> sys.stderr, 'Please specify an API token granting ' + permissionType + ' permission. You can place it in the'
+        print >> sys.stderr, 'command line as --token "XXX", or in the environment variable "' + environmentVariableName + '".'
+        print >> sys.stderr, 'Use of an environment variable is recommended, to avoid displaying your API token in the'
+        print >> sys.stderr, 'console or your command history. You can find API tokens at https://www.scalyr.com/keys.'
+        sys.exit(1)
 
-  return apiToken
+    return apiToken
 
 
 # Send a request to the server, and return the parsed JSON response.
@@ -42,260 +39,262 @@ def getApiToken(args, environmentVariableName, permissionType):
 # uri: Request path for this RPC, e.g. "api/query"
 # parametetDict: The dictionary to be sent (JSON-encoded) to the server as the request body
 def sendRequest(args, uri, parameterDict):
-  parameterJson = json.dumps(parameterDict);
+    parameterJson = json.dumps(parameterDict)
 
-  queryStartTime = datetime.datetime.now()
+    queryStartTime = datetime.datetime.now()
 
-  verbose = args.verbose
-  if verbose:
-    print >> sys.stderr, "Using arguments: %s" % args
+    verbose = args.verbose
+    if verbose:
+        print >> sys.stderr, "Using arguments: %s" % args
 
-  serverAddress = args.server
-  useSSL = True
-  if serverAddress.startswith("http://"):
-    useSSL = False
-    serverAddress = serverAddress[7:]
-  elif serverAddress.startswith("https://"):
-    serverAddress = serverAddress[8:]
+    serverAddress = args.server
+    useSSL = True
+    if serverAddress.startswith("http://"):
+        useSSL = False
+        serverAddress = serverAddress[7:]
+    elif serverAddress.startswith("https://"):
+        serverAddress = serverAddress[8:]
 
-  if verbose:
-    print >> sys.stderr, "Connecting to %s via %s" % (serverAddress, 'https' if useSSL else 'http')
+    if verbose:
+        print >> sys.stderr, "Connecting to %s via %s" % (serverAddress, 'https' if useSSL else 'http')
 
-  conn = None
-  if useSSL:
-    conn = httplib.HTTPSConnection(serverAddress)
-  else:
-    conn = httplib.HTTPConnection(serverAddress)
+    conn = None
+    if useSSL:
+        conn = httplib.HTTPSConnection(serverAddress)
+    else:
+        conn = httplib.HTTPConnection(serverAddress)
 
-  headers = {"Content-type": "application/json"}
+    headers = {"Content-type": "application/json"}
 
-  if verbose:
-    print >> sys.stderr, "Request headers:"
-    print >> sys.stderr, headers
-    print >> sys.stderr, "Request body:"
-    print >> sys.stderr, json.dumps(json.loads(parameterJson), sort_keys=True, indent=2, separators=(',', ': '))
+    if verbose:
+        print >> sys.stderr, "Request headers:"
+        print >> sys.stderr, headers
+        print >> sys.stderr, "Request body:"
+        print >> sys.stderr, json.dumps(json.loads(parameterJson), sort_keys=True, indent=2, separators=(',', ': '))
 
-  conn.request("POST", uri, parameterJson, headers)
+    conn.request("POST", uri, parameterJson, headers)
 
-  # Retrieve and parse the response.
-  response = conn.getresponse()
-  responseBody = response.read()
+    # Retrieve and parse the response.
+    response = conn.getresponse()
+    responseBody = response.read()
 
-  if verbose or (response.status != 200):
-    print >> sys.stderr, "After %s seconds, Scalyr server returned %s bytes; status %d / %s" % (int((datetime.datetime.now() - queryStartTime). total_seconds() * 1000) / 1000.0, len(responseBody), response.status, response.reason)
+    if verbose or (response.status != 200):
+        print >> sys.stderr, "After %s seconds, Scalyr server returned %s bytes; status %d / %s" % (int((datetime.datetime.now() - queryStartTime). total_seconds() * 1000) / 1000.0, len(responseBody), response.status, response.reason)
 
-  if response.status != 200:
-    print >> sys.stderr, 'Response body:'
-    print >> sys.stderr, responseBody
-    sys.exit(1)
+    if response.status != 200:
+        print >> sys.stderr, 'Response body:'
+        print >> sys.stderr, responseBody
+        sys.exit(1)
 
-  try:
-    parsedResponse = json.loads(responseBody)
-  except ValueError, e:
-    print >> sys.stderr, 'Scalyr server returned invalid response:'
-    print >> sys.stderr, responseBody
-    sys.exit(1)
+    try:
+        parsedResponse = json.loads(responseBody)
+    except ValueError:
+        print >> sys.stderr, 'Scalyr server returned invalid response:'
+        print >> sys.stderr, responseBody
+        sys.exit(1)
 
-  status = parsedResponse['status']
-  if not status.startswith('success'):
-    print >> sys.stderr, 'Scalyr server returned error: %s (%s)' % (parsedResponse['message'], status)
-    sys.exit(1)
-    
-  return (parsedResponse, responseBody);
+    status = parsedResponse['status']
+    if not status.startswith('success'):
+        print >> sys.stderr, 'Scalyr server returned error: %s (%s)' % (parsedResponse['message'], status)
+        sys.exit(1)
+
+    return (parsedResponse, responseBody)
 
 
 # Implement the "scalyr get-file" command.
 def commandGetFile(parser):
-  parser.add_argument('filepath', required=True,
-                      help='server pathname of the file to retrieve, e.g. "/scalyr/alerts"')
-  args = parser.parse_args()
+    parser.add_argument('filepath',
+                        required=True,
+                        help='server pathname of the file to retrieve, e.g. "/scalyr/alerts"')
+    args = parser.parse_args()
 
-  # Send the request to the server.
-  response, rawResponse = sendRequest(args, '/getFile', {
-    "token": getApiToken(args, 'scalyr_readconfig_token', 'Read Config'),
-    "path": args.filepath,
-    });
+    # Send the request to the server.
+    response, rawResponse = sendRequest(args, '/getFile', {
+        "token": getApiToken(args, 'scalyr_readconfig_token', 'Read Config'),
+        "path": args.filepath,
+    })
 
-  # Print the file content.
-  if response['status'] == 'success/noSuchFile':
-    print >> sys.stderr, 'File "%s" does not exist' % (args.filepath)
-  else:
-    createDate = datetime.datetime.fromtimestamp(long(response['createDate']) / 1000)
-    modDate    = datetime.datetime.fromtimestamp(long(response['modDate']) / 1000)
+    # Print the file content.
+    if response['status'] == 'success/noSuchFile':
+        print >> sys.stderr, 'File "%s" does not exist' % (args.filepath)
+    else:
+        createDate = datetime.datetime.fromtimestamp(long(response['createDate']) / 1000)
+        modDate = datetime.datetime.fromtimestamp(long(response['modDate']) / 1000)
 
-    print >> sys.stderr, 'Retrieved file "%s", version %d, created %s, modified %s, length %s' % (args.filepath, response['version'], createDate, modDate, len(response['content']))
-    print response['content']
+        print >> sys.stderr, 'Retrieved file "%s", version %d, created %s, modified %s, length %s' % (args.filepath, response['version'], createDate, modDate, len(response['content']))
+        print response['content']
 
 
 # Implement the "scalyr put-file" command.
 def commandPutFile(parser):
-  # Parse the command-line arguments.
-  parser.add_argument('filepath', required=True,
-                      help='server pathname of the file to retrieve, e.g. "/scalyr/alerts"')
-  args = parser.parse_args()
+    # Parse the command-line arguments.
+    parser.add_argument('filepath', required=True,
+                        help='server pathname of the file to retrieve, e.g. "/scalyr/alerts"')
+    args = parser.parse_args()
 
-  # Send the request to the server.
-  content = sys.stdin.read()
-  response, rawResponse = sendRequest(args, '/putFile', {
-    "token": getApiToken(args, 'scalyr_writeconfig_token', 'Write Config'),
-    "path": args.filepath,
-    "content": content
-    });
+    # Send the request to the server.
+    content = sys.stdin.read()
+    response, rawResponse = sendRequest(args, '/putFile', {
+        "token": getApiToken(args, 'scalyr_writeconfig_token', 'Write Config'),
+        "path": args.filepath,
+        "content": content
+    })
 
-  # Print the file content.
-  print >> sys.stderr, 'File "%s" updated' % (args.filepath)
+    # Print the file content.
+    print >> sys.stderr, 'File "%s" updated' % (args.filepath)
 
 
 # Implement the "scalyr list-files" command.
 def commandListFiles(parser):
-  # Parse the command-line arguments.
-  args = parser.parse_args()
+    # Parse the command-line arguments.
+    args = parser.parse_args()
 
-  # Send the request to the server.
-  response, rawResponse = sendRequest(args, '/listFiles', {
-    "token": getApiToken(args, 'scalyr_readconfig_token', 'Read Config')
-    });
+    # Send the request to the server.
+    response, rawResponse = sendRequest(args, '/listFiles', {
+        "token": getApiToken(args, 'scalyr_readconfig_token', 'Read Config')
+    })
 
-  # Print the file content.
-  paths = response['paths']
-  for i in range(len(paths)):
-    print paths[i]
+    # Print the file content.
+    paths = response['paths']
+    for i in range(len(paths)):
+        print paths[i]
 
 
 # Implement the "scalyr query" command.
 def commandQuery(parser):
-  # Parse the command-line arguments.
-  parser.add_argument('filter', nargs='?', default='',
-                      help='search term or filter expression')
-  parser.add_argument('--start', default='',
-                      help='beginning of the time range to query')
-  parser.add_argument('--end', default='',
-                      help='end of the time range to query')
-  parser.add_argument('--count', type=int, default=10,
-                      help='how many log records to retrieve (1-5000)')
-  parser.add_argument('--mode', choices=['head', 'tail'], default='',
-                      help='specifies whether to show logs from the beginning or end of the time range')
-  parser.add_argument('--columns', default='',
-                      help='comma-delimited list of columns to display; defaults to all')
-  parser.add_argument('--output', choices=['singleline', 'multiline', 'csv', 'json', 'json-pretty'], default='multiline',
-                      help='specifies the format in which matching log messages are displayed')
-  parser.add_argument('--priority', choices=['high', 'low'], default='high',
-                      help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
+    # Parse the command-line arguments.
+    parser.add_argument('filter', nargs='?', default='',
+                        help='search term or filter expression')
+    parser.add_argument('--start', default='',
+                        help='beginning of the time range to query')
+    parser.add_argument('--end', default='',
+                        help='end of the time range to query')
+    parser.add_argument('--count', type=int, default=10,
+                        help='how many log records to retrieve (1-5000)')
+    parser.add_argument('--mode', choices=['head', 'tail'], default='',
+                        help='specifies whether to show logs from the beginning or end of the time range')
+    parser.add_argument('--columns', default='',
+                        help='comma-delimited list of columns to display; defaults to all')
+    parser.add_argument('--output', choices=['singleline', 'multiline', 'csv', 'json', 'json-pretty'], default='multiline',
+                        help='specifies the format in which matching log messages are displayed')
+    parser.add_argument('--priority', choices=['high', 'low'], default='high',
+                        help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
 
-  args = parser.parse_args()
+    args = parser.parse_args()
 
-  columns = args.columns
-  output = args.output
-  if output == 'csv' and columns == '':
-    print >> sys.stderr, 'For CSV output, you must supply a nonempty --columns option'
-    sys.exit(1)
+    columns = args.columns
+    output = args.output
+    if output == 'csv' and columns == '':
+        print >> sys.stderr, 'For CSV output, you must supply a nonempty --columns option'
+        sys.exit(1)
 
-  # Get the API token.
-  apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    # Get the API token.
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+
+    # Send the query to the server.
+    response, rawResponse = sendRequest(args, '/api/query', {
+      "token": apiToken,
+      "queryType": "log",
+      "filter": args.filter,
+      "startTime": args.start,
+      "endTime": args.end,
+      "maxCount": args.count,
+      "pageMode": args.mode,
+      "columns": columns,
+      "priority": args.priority
+    })
+
+    # Print the log records.
+    matches = response['matches']
+
+    if args.output == 'json':
+        print rawResponse
+    elif args.output == 'json-pretty':
+        print json.dumps(response, sort_keys=True, indent=2, separators=(',', ': '))
+    elif args.output == 'csv':
+        columnList = columns.split(',')
+
+        ar = []
+        for i in range(len(columnList)):
+            ar.append(columnList[i])
+
+        csvBuffer = StringIO.StringIO()
+        csvWriter = csv.writer(csvBuffer, dialect='excel')
+        csvWriter.writerow(ar)
+        for i in range(len(matches)):
+            match = matches[i]
+            attributes = match.get('attributes')
+            for i in range(len(columnList)):
+                column = columnList[i]
+                if column in match:
+                    ar[i] = match.get(column)
+                elif column in attributes:
+                    ar[i] = attributes.get(column)
+                else:
+                    ar[i] = ''
+            csvWriter.writerow(ar)
+
+        print csvBuffer.getvalue()
+    else:
+        # Readable text format (singleline or multiline)
+        for i in range(len(matches)):
+            printReadableRow(args.output, matches[i])
 
 
-  # Send the query to the server.
-  response, rawResponse = sendRequest(args, '/api/query', {
-    "token": apiToken,
-    "queryType": "log",
-    "filter": args.filter,
-    "startTime": args.start,
-    "endTime": args.end,
-    "maxCount": args.count,
-    "pageMode": args.mode,
-    "columns": columns,
-    "priority": args.priority
-    });
+def printReadableRow(output, match):
+    rawTimestamp = match.get('timestamp')
+    timestamp = ""
+    if rawTimestamp:
+        timestamp = str(datetime.datetime.fromtimestamp(long(rawTimestamp) / 1E9)) + ": "
 
+    rawSeverity = match.get('severity')
+    severity = ""
+    if rawSeverity or 0 == rawSeverity:
+        severity = ['L', 'K', 'J', 'I', 'W', 'E', 'F'][rawSeverity] + " "
 
-  # Print the log records.
-  matches = response['matches']
+    # get message, minus any trailing whitespace
+    message = match.get('message')
+    if not message:
+        message = ''
+        if output == 'messageonly':
+            output = 'singleline'
 
-  if args.output == 'json':
-    print rawResponse
-  elif args.output == 'json-pretty':
-    print json.dumps(response, sort_keys=True, indent=2, separators=(',', ': '))
-  elif args.output == 'csv':
-    columnList = columns.split(',')
-    
-    ar = [];
-    for i in range(len(columnList)):
-      ar.append(columnList[i])
-    
-    csvBuffer = StringIO.StringIO()
-    csvWriter = csv.writer(csvBuffer, dialect='excel')
-    csvWriter.writerow(ar)
-    for i in range(len(matches)):
-      match = matches[i]
-      attributes = match.get('attributes')
-      for i in range(len(columnList)):
-        column = columnList[i]
-        if column in match:
-          ar[i] = match.get(column)
-        elif column in attributes:
-          ar[i] = attributes.get(column)
-        else:
-          ar[i] = ''
-      csvWriter.writerow(ar)
+    message = message.rstrip()
 
-    print csvBuffer.getvalue()
-  else:
-    # Readable text format (singleline or multiline)
-    for i in range(len(matches)):
-      printReadableRow( args.output, matches[i] )
-      
+    attributes = match.get('attributes')
 
-def printReadableRow( output, match ):
-  rawTimestamp = match.get('timestamp')
-  timestamp = ""
-  if rawTimestamp:
-    timestamp = str(datetime.datetime.fromtimestamp(long(rawTimestamp) / 1E9)) + ": "
+    if output == 'singleline':
+        print ('%s%s%s' % (timestamp, severity, message)),
+        for attrName in sorted(attributes.keys()):
+            print (' %s=%s' % (attrName, attributes[attrName])),
+        print ''
+    elif output == 'messageonly':
+        print message
+    else:
+        print '%s%s%s' % (timestamp, severity, message)
+        for attrName in sorted(attributes.keys()):
+            print '  %s = %s' % (attrName, attributes[attrName])
 
-  rawSeverity = match.get('severity')
-  severity = ""
-  if rawSeverity or 0 == rawSeverity:
-    severity = ['L', 'K', 'J', 'I', 'W', 'E', 'F'][rawSeverity] + " ";
-
-  #get message, minus any trailing whitespace
-  message = match.get('message')
-  if not message:
-    message = ''
-    if output == 'messageonly':
-        output = 'singleline'
-
-  message = message.rstrip()
-
-  attributes = match.get('attributes')
-
-  if output == 'singleline':
-    print ('%s%s%s' % (timestamp, severity, message)),
-    for attrName in sorted(attributes.keys()):
-      print (' %s=%s' % (attrName, attributes[attrName])),
-    print ''
-  elif output  == 'messageonly':
-    print message
-  else:
-    print '%s%s%s' % (timestamp, severity, message)
-    for attrName in sorted(attributes.keys()):
-      print '  %s = %s' % (attrName, attributes[attrName])
 
 # Print the output of a numeric-query or timeseries-query command.
 def printNumericResults(values, outputFormat, rawResponse, response):
-  if outputFormat == 'json':
-    print rawResponse
-  elif outputFormat == 'json-pretty':
-    print json.dumps(response, sort_keys=True, indent=2, separators=(',', ': '))
-  else:
-    # csv
-    print ','.join(map(str, values))
+    if outputFormat == 'json':
+        print rawResponse
+    elif outputFormat == 'json-pretty':
+        print json.dumps(response, sort_keys=True, indent=2, separators=(',', ': '))
+    else:
+        # csv
+        print ','.join(map(str, values))
 
-def get_match_unique_id( match ):
+
+def get_match_unique_id(match):
     return (match['timestamp'], match['session'])
 
-def liveTail( apiToken, args ):
 
-    maximum_tail_time=10*60
-    readback_limit = 10*60 #10 minutes
+def liveTail(apiToken, args):
+
+    maximum_tail_time = 10 * 60
+    readback_limit = 10 * 60  # 10 minutes
     max_matches = 1000
     poll_interval = 10
 
@@ -309,110 +308,110 @@ def liveTail( apiToken, args ):
     current_time = time.time()
     first = True
 
-    previous_matches = deque( maxlen=max_matches )
+    previous_matches = deque(maxlen=max_matches)
 
     print "Beginning live tail.."
     while current_time - start_time < maximum_tail_time:
 
         # Send the query to the server.
         response, rawResponse = sendRequest(args, '/api/query', {
-        "token": apiToken,
-        "queryType": "log",
-        "filter": args.filter,
-        "startTime": int( current_time - readback_limit ),
-        "endTime": int( current_time ),
-        "maxCount": max_matches,
-        "pageMode": "tail",
-        "columns": '',
-        "priority": "low"
-        });
+            "token": apiToken,
+            "queryType": "log",
+            "filter": args.filter,
+            "startTime": int(current_time - readback_limit),
+            "endTime": int(current_time),
+            "maxCount": max_matches,
+            "pageMode": "tail",
+            "columns": '',
+            "priority": "low"
+        })
 
-        #get a list of matches that we haven't seen yet
-        new_matches = [match for match in response['matches'] if get_match_unique_id( match ) not in previous_matches]
+        # get a list of matches that we haven't seen yet
+        new_matches = [match for match in response['matches'] if get_match_unique_id(match) not in previous_matches]
 
-        #if the "not in previous_matches" test didn't find any duplicates, that means there have been
-        #so many new log events that our new query didn't overlap with the previous query. Therefore, we'll
-        #have missed some of the intervening messages.
-        row_count = len( new_matches )
+        # if the "not in previous_matches" test didn't find any duplicates, that means there have been
+        # so many new log events that our new query didn't overlap with the previous query. Therefore, we'll
+        # have missed some of the intervening messages.
+        row_count = len(new_matches)
         if not first and row_count >= max_matches:
             print "[WARN] Too many messages for tail to keep up; some messages are not being shown."
 
-        #print out any new matches, and add the ids to the list of matches we have already seen.
-        #Also keep track of how many rows we have seen already, so the first time through we can
-        #print the last few lines
+        # print out any new matches, and add the ids to the list of matches we have already seen.
+        # Also keep track of how many rows we have seen already, so the first time through we can
+        # print the last few lines
         for match in new_matches:
             if not first or row_count <= initial_lines:
-                printReadableRow( args.output, match )
-            previous_matches.append( get_match_unique_id( match ) )
+                printReadableRow(args.output, match)
+            previous_matches.append(get_match_unique_id(match))
             row_count -= 1
 
-        #sleep for any remaining time
+        # sleep for any remaining time
         new_time = time.time()
         elapsed_time = new_time - current_time
         remaining_time = poll_interval - elapsed_time
         if remaining_time > 0:
-            time.sleep( remaining_time )
+            time.sleep(remaining_time)
 
         current_time = time.time()
         first = False
     print "----\nTo minimize server load, live tail expires after 10 minutes. If this is bothersome, please let us know at support@scalyr.com.\n"
 
+
 # Implement the 'scalyr tail' command
-def commandTail( parser ):
+def commandTail(parser):
     # Build the args
     parser.add_argument('filter', nargs='?', default='',
-                      help='search term or filter expression')
+                        help='search term or filter expression')
     parser.add_argument('--output', choices=['singleline', 'multiline', 'messageonly'], default='messageonly',
-                      help='specifies the format in which matching log messages are displayed')
+                        help='specifies the format in which matching log messages are displayed')
     parser.add_argument('--lines', '-n', type=int, default=10,
-                      help='Output the previous \'n\' lines at the start of the tail')
+                        help='Output the previous \'n\' lines at the start of the tail')
 
     # Get the API token
     args = parser.parse_args()
-    apiToken = getApiToken( args, 'scalyr_readlog_token', 'Read Logs' )
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
 
     try:
-        liveTail( apiToken, args )
+        liveTail(apiToken, args)
     except KeyboardInterrupt:
         print "\nLive tail has quit."
 
+
 # Implement the "scalyr numeric-query" command.
 def commandNumericQuery(parser):
-  # Parse the command-line arguments.
-  parser.add_argument('filter', nargs=1, default='',
-                      help='search term or filter expression')
-  parser.add_argument('--function', default='',
-                      help='the value to compute from the events matching the filter')
-  parser.add_argument('--start', required=True,
-                      help='beginning of the time range to query')
-  parser.add_argument('--end', default='',
-                      help='end of the time range to query')
-  parser.add_argument('--buckets', type=int, default=1,
-                      help='how many buckets to divide the time interval into (1-5000)')
-  parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
-                      help='specifies the format in which numbers are emitted')
-  parser.add_argument('--priority', choices=['high', 'low'], default='high',
-                      help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
-  args = parser.parse_args()
-  
-  output = args.output
+    # Parse the command-line arguments.
+    parser.add_argument('filter', nargs=1, default='',
+                        help='search term or filter expression')
+    parser.add_argument('--function', default='',
+                        help='the value to compute from the events matching the filter')
+    parser.add_argument('--start', required=True,
+                        help='beginning of the time range to query')
+    parser.add_argument('--end', default='',
+                        help='end of the time range to query')
+    parser.add_argument('--buckets', type=int, default=1,
+                        help='how many buckets to divide the time interval into (1-5000)')
+    parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
+                        help='specifies the format in which numbers are emitted')
+    parser.add_argument('--priority', choices=['high', 'low'], default='high',
+                        help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
+    args = parser.parse_args()
 
-  # Get the API token.
-  apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    # Get the API token.
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
 
-  # Send the query to the server.
-  response, rawResponse = sendRequest(args, '/api/numericQuery', {
-    "token": apiToken,
-    "queryType": "numeric",
-    "filter": args.filter[0],
-    "function": args.function,
-    "startTime": args.start,
-    "endTime": args.end,
-    "buckets": args.buckets,
-    "priority": args.priority
-    });
-  
-  printNumericResults(response['values'], args.output, rawResponse, response)
+    # Send the query to the server.
+    response, rawResponse = sendRequest(args, '/api/numericQuery', {
+        "token": apiToken,
+        "queryType": "numeric",
+        "filter": args.filter[0],
+        "function": args.function,
+        "startTime": args.start,
+        "endTime": args.end,
+        "buckets": args.buckets,
+        "priority": args.priority
+    })
+
+    printNumericResults(response['values'], args.output, rawResponse, response)
 
 
 # Print the output of a facet-query command.
@@ -464,116 +463,113 @@ def commandFacetQuery(parser):
         "startTime": args.start,
         "endTime": args.end,
         "priority": args.priority
-    });
+    })
 
     printFacetResults(response['matchCount'], response['values'], args.output, rawResponse, response)
 
 
 # Implement the "scalyr timeseries-query" command.
 def commandTimeseriesQuery(parser):
-  # Parse the command-line arguments.
-  parser.add_argument('--timeseries', required=True,
-                      help='ID of the timeseries to query')
-  parser.add_argument('--start', required=True,
-                      help='beginning of the time range to query')
-  parser.add_argument('--end', default='',
-                      help='end of the time range to query')
-  parser.add_argument('--buckets', type=int, default=1,
-                      help='how many buckets to divide the time interval into (1-5000)')
-  parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
-                      help='specifies the format in which numbers are emitted')
-  parser.add_argument('--priority', choices=['high', 'low'], default='high',
-                      help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
-  args = parser.parse_args()
-  
-  output = args.output
+    # Parse the command-line arguments.
+    parser.add_argument('--timeseries', required=True,
+                        help='ID of the timeseries to query')
+    parser.add_argument('--start', required=True,
+                        help='beginning of the time range to query')
+    parser.add_argument('--end', default='',
+                        help='end of the time range to query')
+    parser.add_argument('--buckets', type=int, default=1,
+                        help='how many buckets to divide the time interval into (1-5000)')
+    parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
+                        help='specifies the format in which numbers are emitted')
+    parser.add_argument('--priority', choices=['high', 'low'], default='high',
+                        help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
+    args = parser.parse_args()
 
-  # Get the API token.
-  apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    # Get the API token.
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
 
-  # Send the query to the server.
-  response, rawResponse = sendRequest(args, '/api/timeseriesQuery', {
-    "token": apiToken,
-    "queries": [{
-      "queryType": "numeric",
-      "timeseriesId": args.timeseries,
-      "startTime": args.start,
-      "endTime": args.end,
-      "buckets": args.buckets,
-      "priority": args.priority
-    }]
-    });
+    # Send the query to the server.
+    response, rawResponse = sendRequest(args, '/api/timeseriesQuery', {
+        "token": apiToken,
+        "queries": [{
+            "queryType": "numeric",
+            "timeseriesId": args.timeseries,
+            "startTime": args.start,
+            "endTime": args.end,
+            "buckets": args.buckets,
+            "priority": args.priority
+        }]
+    })
 
-  # Print the results.
-  printNumericResults(response['results'][0]['values'], args.output, rawResponse, response)
+    # Print the results.
+    printNumericResults(response['results'][0]['values'], args.output, rawResponse, response)
 
 
 # Implement the "scalyr create-timeseries" command.
 def commandCreateTimeseries(parser):
-  # Parse the command-line arguments.
-  parser.add_argument('filter', nargs=1, default='',
-                      help='search term or filter expression')
-  parser.add_argument('--function', default='',
-                      help='the value to compute from the events matching the filter')
-  args = parser.parse_args()
-  
-  # Get the API token.
-  apiToken = getApiToken(args, 'scalyr_writeconfig_token', 'Write Config')
+    # Parse the command-line arguments.
+    parser.add_argument('filter', nargs=1, default='',
+                        help='search term or filter expression')
+    parser.add_argument('--function', default='',
+                        help='the value to compute from the events matching the filter')
+    args = parser.parse_args()
 
-  # Send the query to the server.
-  response, rawResponse = sendRequest(args, '/api/createTimeseries', {
-    "token": apiToken,
-    "queryType": "numeric",
-    "filter": args.filter[0],
-    "function": args.function
-    });
-  
-  print response['timeseriesId']
+    # Get the API token.
+    apiToken = getApiToken(args, 'scalyr_writeconfig_token', 'Write Config')
+
+    # Send the query to the server.
+    response, rawResponse = sendRequest(args, '/api/createTimeseries', {
+        "token": apiToken,
+        "queryType": "numeric",
+        "filter": args.filter[0],
+        "function": args.function
+    })
+
+    print response['timeseriesId']
 
 
 if __name__ == '__main__':
-  # All available commands
-  all_commands = {
-    'query': commandQuery,
-    'tail': commandTail,
-    'numeric-query': commandNumericQuery,
-    'facet-query': commandFacetQuery,
-    'timeseries-query': commandTimeseriesQuery,
-    'timerseries-query': commandTimeseriesQuery, # mispelling; kept for backwards compatibility
-    'create-timeseries': commandCreateTimeseries,
-    'get-file': commandGetFile,
-    'put-file': commandPutFile,
-    'list-files': commandListFiles,
-  }
+    # All available commands
+    all_commands = {
+      'query': commandQuery,
+      'tail': commandTail,
+      'numeric-query': commandNumericQuery,
+      'facet-query': commandFacetQuery,
+      'timeseries-query': commandTimeseriesQuery,
+      'timerseries-query': commandTimeseriesQuery,  # mispelling; kept for backwards compatibility
+      'create-timeseries': commandCreateTimeseries,
+      'get-file': commandGetFile,
+      'put-file': commandPutFile,
+      'list-files': commandListFiles,
+    }
 
-  # Define arguments that are the same for all commands
-  parser = argparse.ArgumentParser(description='Scalyr command-line tool. See https://github.com/scalyr/scalyr-tool for documentation.')
-  parser.add_argument('command', choices=all_commands.keys(),
-                      help='specifies the action to be performed')
-  parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
-  parser.add_argument('--server', default='https://www.scalyr.com',
-                      help='URL for the Scalyr API server')
-  parser.add_argument('--token', default='',
-                      help='API access token')
-  parser.add_argument('--verbose', action='store_true', default=False,
-                      help='enables additional diagnostic output')
+    # Define arguments that are the same for all commands
+    parser = argparse.ArgumentParser(description='Scalyr command-line tool. See https://github.com/scalyr/scalyr-tool for documentation.')
+    parser.add_argument('command', choices=all_commands.keys(),
+                        help='specifies the action to be performed')
+    parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
+    parser.add_argument('--server', default='https://www.scalyr.com',
+                        help='URL for the Scalyr API server')
+    parser.add_argument('--token', default='',
+                        help='API access token')
+    parser.add_argument('--verbose', action='store_true', default=False,
+                        help='enables additional diagnostic output')
 
-  command = None
-  # Because the options are command-specific, we cannot fully parse the arguments until we know the
-  # command... but we also need to know which command to invoke so that we can add the command-specific
-  # options and then execute the command.  So, here, we just guess what the command is by looking over all the
-  # arguments and seeing the first one that matches one of the possible commands.
-  for arg in sys.argv[1:]:
-      if arg in all_commands:
-          command = arg
+    command = None
+    # Because the options are command-specific, we cannot fully parse the arguments until we know the
+    # command... but we also need to know which command to invoke so that we can add the command-specific
+    # options and then execute the command.  So, here, we just guess what the command is by looking over all the
+    # arguments and seeing the first one that matches one of the possible commands.
+    for arg in sys.argv[1:]:
+        if arg in all_commands:
+            command = arg
 
-  # If we could not find a possible command, then just try to parse the commandline with the current options, which
-  # we know will fail since there's no valid value for 'command'.
-  if command is None:
-      tmp_args = parser.parse_args()
+    # If we could not find a possible command, then just try to parse the commandline with the current options, which
+    # we know will fail since there's no valid value for 'command'.
+    if command is None:
+        tmp_args = parser.parse_args()
 
-  # Invoke the command's function from the all_command's mapping.  We really should change this to a more
-  # object oriented approach.
-  command_func = all_commands[command]
-  command_func(parser)
-
+    # Invoke the command's function from the all_command's mapping.  We really should change this to a more
+    # object oriented approach.
+    command_func = all_commands[command]
+    command_func(parser)
