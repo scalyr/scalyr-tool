@@ -2,15 +2,24 @@
 #
 # Scalyr command-line utility
 
+from __future__ import print_function
+
 import sys
 import os
 import argparse
 import time
 import datetime
-import httplib
 import json
 import csv
-import StringIO
+
+try:
+    # Python 2 versions
+    import httplib
+    import StringIO
+except ImportError:
+    # Python 3 versions
+    import http.client as httplib
+    import io as StringIO
 
 from collections import deque
 
@@ -25,10 +34,10 @@ def getApiToken(args, environmentVariableName, permissionType):
     if apiToken == '':
         apiToken = os.getenv(environmentVariableName, '')
     if apiToken == '':
-        print >> sys.stderr, 'Please specify an API token granting ' + permissionType + ' permission. You can place it in the'
-        print >> sys.stderr, 'command line as --token "XXX", or in the environment variable "' + environmentVariableName + '".'
-        print >> sys.stderr, 'Use of an environment variable is recommended, to avoid displaying your API token in the'
-        print >> sys.stderr, 'console or your command history. You can find API tokens at https://www.scalyr.com/keys.'
+        print('Please specify an API token granting ' + permissionType + ' permission. You can place it in the', file=sys.stderr)
+        print('command line as --token "XXX", or in the environment variable "' + environmentVariableName + '".', file=sys.stderr)
+        print('Use of an environment variable is recommended, to avoid displaying your API token in the', file=sys.stderr)
+        print('console or your command history. You can find API tokens at https://www.scalyr.com/keys.', file=sys.stderr)
         sys.exit(1)
 
     return apiToken
@@ -45,7 +54,7 @@ def sendRequest(args, uri, parameterDict):
 
     verbose = args.verbose
     if verbose:
-        print >> sys.stderr, "Using arguments: %s" % args
+        print("Using arguments: %s" % args, file=sys.stderr)
 
     serverAddress = args.server
     useSSL = True
@@ -56,7 +65,7 @@ def sendRequest(args, uri, parameterDict):
         serverAddress = serverAddress[8:]
 
     if verbose:
-        print >> sys.stderr, "Connecting to %s via %s" % (serverAddress, 'https' if useSSL else 'http')
+        print("Connecting to %s via %s" % (serverAddress, 'https' if useSSL else 'http'), file=sys.stderr)
 
     conn = None
     if useSSL:
@@ -67,35 +76,35 @@ def sendRequest(args, uri, parameterDict):
     headers = {"Content-type": "application/json"}
 
     if verbose:
-        print >> sys.stderr, "Request headers:"
-        print >> sys.stderr, headers
-        print >> sys.stderr, "Request body:"
-        print >> sys.stderr, json.dumps(json.loads(parameterJson), sort_keys=True, indent=2, separators=(',', ': '))
+        print("Request headers:", file=sys.stderr)
+        print(headers, file=sys.stderr)
+        print("Request body:", file=sys.stderr)
+        print(json.dumps(json.loads(parameterJson), sort_keys=True, indent=2, separators=(',', ': ')), file=sys.stderr)
 
     conn.request("POST", uri, parameterJson, headers)
 
     # Retrieve and parse the response.
     response = conn.getresponse()
-    responseBody = response.read()
+    responseBody = response.read().decode('utf8')
 
     if verbose or (response.status != 200):
-        print >> sys.stderr, "After %s seconds, Scalyr server returned %s bytes; status %d / %s" % (int((datetime.datetime.now() - queryStartTime). total_seconds() * 1000) / 1000.0, len(responseBody), response.status, response.reason)
+        print("After %s seconds, Scalyr server returned %s bytes; status %d / %s" % (int((datetime.datetime.now() - queryStartTime). total_seconds() * 1000) / 1000.0, len(responseBody), response.status, response.reason), file=sys.stderr)
 
     if response.status != 200:
-        print >> sys.stderr, 'Response body:'
-        print >> sys.stderr, responseBody
+        print('Response body:', file=sys.stderr)
+        print(responseBody, file=sys.stderr)
         sys.exit(1)
 
     try:
         parsedResponse = json.loads(responseBody)
     except ValueError:
-        print >> sys.stderr, 'Scalyr server returned invalid response:'
-        print >> sys.stderr, responseBody
+        print('Scalyr server returned invalid response:', file=sys.stderr)
+        print(responseBody, file=sys.stderr)
         sys.exit(1)
 
     status = parsedResponse['status']
     if not status.startswith('success'):
-        print >> sys.stderr, 'Scalyr server returned error: %s (%s)' % (parsedResponse['message'], status)
+        print('Scalyr server returned error: %s (%s)' % (parsedResponse['message'], status), file=sys.stderr)
         sys.exit(1)
 
     return (parsedResponse, responseBody)
@@ -115,13 +124,13 @@ def commandGetFile(parser):
 
     # Print the file content.
     if response['status'] == 'success/noSuchFile':
-        print >> sys.stderr, 'File "%s" does not exist' % (args.filepath)
+        print('File "%s" does not exist' % (args.filepath), file=sys.stderr)
     else:
-        createDate = datetime.datetime.fromtimestamp(long(response['createDate']) / 1000)
-        modDate = datetime.datetime.fromtimestamp(long(response['modDate']) / 1000)
+        createDate = datetime.datetime.fromtimestamp(int(response['createDate']) / 1000)
+        modDate = datetime.datetime.fromtimestamp(int(response['modDate']) / 1000)
 
-        print >> sys.stderr, 'Retrieved file "%s", version %d, created %s, modified %s, length %s' % (args.filepath, response['version'], createDate, modDate, len(response['content']))
-        print response['content']
+        print('Retrieved file "%s", version %d, created %s, modified %s, length %s' % (args.filepath, response['version'], createDate, modDate, len(response['content'])), file=sys.stderr)
+        print(response['content'])
 
 
 # Implement the "scalyr put-file" command.
@@ -140,7 +149,7 @@ def commandPutFile(parser):
     })
 
     # Print the file content.
-    print >> sys.stderr, 'File "%s" updated' % (args.filepath)
+    print('File "%s" updated' % (args.filepath), file=sys.stderr)
 
 
 # Implement the "scalyr list-files" command.
@@ -156,7 +165,7 @@ def commandListFiles(parser):
     # Print the file content.
     paths = response['paths']
     for i in range(len(paths)):
-        print paths[i]
+        print(paths[i])
 
 
 # Implement the "scalyr query" command.
@@ -184,7 +193,7 @@ def commandQuery(parser):
     columns = args.columns
     output = args.output
     if output == 'csv' and columns == '':
-        print >> sys.stderr, 'For CSV output, you must supply a nonempty --columns option'
+        print('For CSV output, you must supply a nonempty --columns option', file=sys.stderr)
         sys.exit(1)
 
     # Get the API token.
@@ -207,9 +216,9 @@ def commandQuery(parser):
     matches = response['matches']
 
     if args.output == 'json':
-        print rawResponse
+        print(rawResponse)
     elif args.output == 'json-pretty':
-        print json.dumps(response, sort_keys=True, indent=2, separators=(',', ': '))
+        print(json.dumps(response, sort_keys=True, indent=2, separators=(',', ': ')))
     elif args.output == 'csv':
         columnList = columns.split(',')
 
@@ -233,7 +242,7 @@ def commandQuery(parser):
                     ar[i] = ''
             csvWriter.writerow(ar)
 
-        print csvBuffer.getvalue()
+        print(csvBuffer.getvalue())
     else:
         # Readable text format (singleline or multiline)
         for i in range(len(matches)):
@@ -244,7 +253,7 @@ def printReadableRow(output, match):
     rawTimestamp = match.get('timestamp')
     timestamp = ""
     if rawTimestamp:
-        timestamp = str(datetime.datetime.fromtimestamp(long(rawTimestamp) / 1E9)) + ": "
+        timestamp = str(datetime.datetime.fromtimestamp(int(rawTimestamp) / 1E9)) + ": "
 
     rawSeverity = match.get('severity')
     severity = ""
@@ -263,27 +272,27 @@ def printReadableRow(output, match):
     attributes = match.get('attributes')
 
     if output == 'singleline':
-        print ('%s%s%s' % (timestamp, severity, message)),
+        print('%s%s%s' % (timestamp, severity, message)),
         for attrName in sorted(attributes.keys()):
-            print (' %s=%s' % (attrName, attributes[attrName])),
-        print ''
+            print(' %s=%s' % (attrName, attributes[attrName])),
+        print('')
     elif output == 'messageonly':
-        print message
+        print(message)
     else:
-        print '%s%s%s' % (timestamp, severity, message)
+        print('%s%s%s' % (timestamp, severity, message))
         for attrName in sorted(attributes.keys()):
-            print '  %s = %s' % (attrName, attributes[attrName])
+            print('  %s = %s' % (attrName, attributes[attrName]))
 
 
 # Print the output of a numeric-query or timeseries-query command.
 def printNumericResults(values, outputFormat, rawResponse, response):
     if outputFormat == 'json':
-        print rawResponse
+        print(rawResponse)
     elif outputFormat == 'json-pretty':
-        print json.dumps(response, sort_keys=True, indent=2, separators=(',', ': '))
+        print(json.dumps(response, sort_keys=True, indent=2, separators=(',', ': ')))
     else:
         # csv
-        print ','.join(map(str, values))
+        print(','.join(map(str, values)))
 
 
 def get_match_unique_id(match):
@@ -300,7 +309,7 @@ def liveTail(apiToken, args):
     initial_lines = args.lines
 
     if initial_lines > max_matches:
-        print "Output of previous lines is limited to 1000 lines only"
+        print("Output of previous lines is limited to 1000 lines only")
         initial_lines = max_matches
 
     start_time = time.time()
@@ -309,7 +318,7 @@ def liveTail(apiToken, args):
 
     previous_matches = deque(maxlen=max_matches)
 
-    print "Beginning live tail.."
+    print("Beginning live tail..")
     while current_time - start_time < maximum_tail_time:
 
         # Send the query to the server.
@@ -333,7 +342,7 @@ def liveTail(apiToken, args):
         # have missed some of the intervening messages.
         row_count = len(new_matches)
         if not first and row_count >= max_matches:
-            print "[WARN] Too many messages for tail to keep up; some messages are not being shown."
+            print("[WARN] Too many messages for tail to keep up; some messages are not being shown.")
 
         # print out any new matches, and add the ids to the list of matches we have already seen.
         # Also keep track of how many rows we have seen already, so the first time through we can
@@ -353,7 +362,7 @@ def liveTail(apiToken, args):
 
         current_time = time.time()
         first = False
-    print "----\nTo minimize server load, live tail expires after 10 minutes. If this is bothersome, please let us know at support@scalyr.com.\n"
+    print("----\nTo minimize server load, live tail expires after 10 minutes. If this is bothersome, please let us know at support@scalyr.com.\n")
 
 
 # Implement the 'scalyr tail' command
@@ -373,7 +382,7 @@ def commandTail(parser):
     try:
         liveTail(apiToken, args)
     except KeyboardInterrupt:
-        print "\nLive tail has quit."
+        print("\nLive tail has quit.")
 
 
 # Implement the "scalyr numeric-query" command.
@@ -416,9 +425,9 @@ def commandNumericQuery(parser):
 # Print the output of a facet-query command.
 def printFacetResults(matchCount, values, outputFormat, rawResponse, response):
     if outputFormat == 'json':
-        print rawResponse
+        print(rawResponse)
     elif outputFormat == 'json-pretty':
-        print json.dumps(response, sort_keys=True, indent=2, separators=(',', ': '))
+        print(json.dumps(response, sort_keys=True, indent=2, separators=(',', ': ')))
     else:
         # csv
         csvBuffer = StringIO.StringIO()
@@ -427,7 +436,7 @@ def printFacetResults(matchCount, values, outputFormat, rawResponse, response):
         for i in range(len(values)):
             valueAndCount = values[i]
             csvWriter.writerow([valueAndCount.get('count'), valueAndCount.get('value')])
-        print csvBuffer.getvalue()
+        print(csvBuffer.getvalue())
 
 
 # Implement the "scalyr facet-query" command.
@@ -524,7 +533,7 @@ def commandCreateTimeseries(parser):
         "function": args.function
     })
 
-    print response['timeseriesId']
+    print(response['timeseriesId'])
 
 
 if __name__ == '__main__':
