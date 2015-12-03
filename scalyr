@@ -104,7 +104,6 @@ def sendRequest(args, uri, parameterDict):
 # Implement the "scalyr get-file" command.
 def commandGetFile(parser):
     parser.add_argument('filepath',
-                        required=True,
                         help='server pathname of the file to retrieve, e.g. "/scalyr/alerts"')
     args = parser.parse_args()
 
@@ -128,7 +127,7 @@ def commandGetFile(parser):
 # Implement the "scalyr put-file" command.
 def commandPutFile(parser):
     # Parse the command-line arguments.
-    parser.add_argument('filepath', required=True,
+    parser.add_argument('filepath',
                         help='server pathname of the file to retrieve, e.g. "/scalyr/alerts"')
     args = parser.parse_args()
 
