@@ -2,8 +2,6 @@
 #
 # Scalyr command-line utility
 
-from __future__ import print_function
-
 import sys
 import os
 import argparse
@@ -34,14 +32,18 @@ def getApiToken(args, environmentVariableName, permissionType):
     if apiToken == '':
         apiToken = os.getenv(environmentVariableName, '')
     if apiToken == '':
-        print('Please specify an API token granting ' + permissionType + ' permission. You can place it in the', file=sys.stderr)
-        print('command line as --token "XXX", or in the environment variable "' + environmentVariableName + '".', file=sys.stderr)
-        print('Use of an environment variable is recommended, to avoid displaying your API token in the', file=sys.stderr)
-        print('console or your command history. You can find API tokens at https://www.scalyr.com/keys.', file=sys.stderr)
+        print_stderr('Please specify an API token granting ' + permissionType + ' permission. You can place it in the')
+        print_stderr('command line as --token "XXX", or in the environment variable "' + environmentVariableName + '".')
+        print_stderr('Use of an environment variable is recommended, to avoid displaying your API token in the')
+        print_stderr('console or your command history. You can find API tokens at https://www.scalyr.com/keys.')
         sys.exit(1)
 
     return apiToken
 
+
+# Print a string to stderr.
+def print_stderr(message):
+    sys.stderr.write(message + '\n')
 
 # Send a request to the server, and return the parsed JSON response.
 # args: Our parsed command-line arguments
@@ -54,7 +56,7 @@ def sendRequest(args, uri, parameterDict):
 
     verbose = args.verbose
     if verbose:
-        print("Using arguments: %s" % args, file=sys.stderr)
+        print_stderr("Using arguments: %s" % args)
 
     serverAddress = args.server
     useSSL = True
@@ -65,7 +67,7 @@ def sendRequest(args, uri, parameterDict):
         serverAddress = serverAddress[8:]
 
     if verbose:
-        print("Connecting to %s via %s" % (serverAddress, 'https' if useSSL else 'http'), file=sys.stderr)
+        print_stderr("Connecting to %s via %s" % (serverAddress, 'https' if useSSL else 'http'))
 
     conn = None
     if useSSL:
@@ -76,10 +78,10 @@ def sendRequest(args, uri, parameterDict):
     headers = {"Content-type": "application/json"}
 
     if verbose:
-        print("Request headers:", file=sys.stderr)
-        print(headers, file=sys.stderr)
-        print("Request body:", file=sys.stderr)
-        print(json.dumps(json.loads(parameterJson), sort_keys=True, indent=2, separators=(',', ': ')), file=sys.stderr)
+        print_stderr("Request headers:")
+        print_stderr(headers)
+        print_stderr("Request body:")
+        print_stderr(json.dumps(json.loads(parameterJson), sort_keys=True, indent=2, separators=(',', ': ')))
 
     conn.request("POST", uri, parameterJson, headers)
 
@@ -88,23 +90,23 @@ def sendRequest(args, uri, parameterDict):
     responseBody = response.read().decode('utf8')
 
     if verbose or (response.status != 200):
-        print("After %s seconds, Scalyr server returned %s bytes; status %d / %s" % (int((datetime.datetime.now() - queryStartTime). total_seconds() * 1000) / 1000.0, len(responseBody), response.status, response.reason), file=sys.stderr)
+        print_stderr("After %s seconds, Scalyr server returned %s bytes; status %d / %s" % (int((datetime.datetime.now() - queryStartTime). total_seconds() * 1000) / 1000.0, len(responseBody), response.status, response.reason))
 
     if response.status != 200:
-        print('Response body:', file=sys.stderr)
-        print(responseBody, file=sys.stderr)
+        print_stderr('Response body:')
+        print_stderr(responseBody)
         sys.exit(1)
 
     try:
         parsedResponse = json.loads(responseBody)
     except ValueError:
-        print('Scalyr server returned invalid response:', file=sys.stderr)
-        print(responseBody, file=sys.stderr)
+        print_stderr('Scalyr server returned invalid response:')
+        print_stderr(responseBody)
         sys.exit(1)
 
     status = parsedResponse['status']
     if not status.startswith('success'):
-        print('Scalyr server returned error: %s (%s)' % (parsedResponse['message'], status), file=sys.stderr)
+        print_stderr('Scalyr server returned error: %s (%s)' % (parsedResponse['message'], status))
         sys.exit(1)
 
     return (parsedResponse, responseBody)
@@ -124,12 +126,12 @@ def commandGetFile(parser):
 
     # Print the file content.
     if response['status'] == 'success/noSuchFile':
-        print('File "%s" does not exist' % (args.filepath), file=sys.stderr)
+        print_stderr('File "%s" does not exist' % (args.filepath))
     else:
         createDate = datetime.datetime.fromtimestamp(int(response['createDate']) / 1000)
         modDate = datetime.datetime.fromtimestamp(int(response['modDate']) / 1000)
 
-        print('Retrieved file "%s", version %d, created %s, modified %s, length %s' % (args.filepath, response['version'], createDate, modDate, len(response['content'])), file=sys.stderr)
+        print_stderr('Retrieved file "%s", version %d, created %s, modified %s, length %s' % (args.filepath, response['version'], createDate, modDate, len(response['content'])))
         print(response['content'])
 
 
@@ -149,7 +151,7 @@ def commandPutFile(parser):
     })
 
     # Print the file content.
-    print('File "%s" updated' % (args.filepath), file=sys.stderr)
+    print_stderr('File "%s" updated' % (args.filepath))
 
 
 # Implement the "scalyr list-files" command.
@@ -193,7 +195,7 @@ def commandQuery(parser):
     columns = args.columns
     output = args.output
     if output == 'csv' and columns == '':
-        print('For CSV output, you must supply a nonempty --columns option', file=sys.stderr)
+        print_stderr('For CSV output, you must supply a nonempty --columns option')
         sys.exit(1)
 
     # Get the API token.
