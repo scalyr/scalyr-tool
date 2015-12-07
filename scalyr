@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/Library/Frameworks/Python.framework/Versions/2.4/bin/python
 #
 # Scalyr command-line utility
 
@@ -67,7 +67,11 @@ def sendRequest(args, uri, parameterDict):
         serverAddress = serverAddress[8:]
 
     if verbose:
-        print_stderr("Connecting to %s via %s" % (serverAddress, 'https' if useSSL else 'http'))
+        if useSSL:
+            protocol = 'https'
+        else:
+            protocol = 'http'
+        print_stderr("Connecting to %s via %s" % (serverAddress, protocol))
 
     conn = None
     if useSSL:
