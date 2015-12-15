@@ -275,6 +275,8 @@ def printReadableRow(output, match):
 
     message = message.rstrip()
 
+    if type(message) is unicode:
+        message = message.encode('utf-8')
     attributes = match.get('attributes')
 
     if output == 'singleline':
