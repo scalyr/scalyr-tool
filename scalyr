@@ -1,4 +1,4 @@
-#!/Library/Frameworks/Python.framework/Versions/2.4/bin/python
+#!/usr/bin/env python
 #
 # Scalyr command-line utility
 
