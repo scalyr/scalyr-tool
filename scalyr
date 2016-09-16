@@ -443,7 +443,7 @@ def printFacetResults(matchCount, values, outputFormat, rawResponse, response):
         csvWriter.writerow(['count', 'value'])
         for i in range(len(values)):
             valueAndCount = values[i]
-            csvWriter.writerow([valueAndCount.get('count'), valueAndCount.get('value')])
+            csvWriter.writerow([valueAndCount.get('count'), unicode(valueAndCount.get('value')).encode("utf-8")])
         print(csvBuffer.getvalue())
 
 
