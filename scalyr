@@ -43,7 +43,7 @@ def getApiToken(args, environmentVariableName, permissionType):
 
 # Print a string to stderr.
 def print_stderr(message):
-    sys.stderr.write(message + '\n')
+    sys.stderr.write(str(message) + '\n')
 
 # Send a request to the server, and return the parsed JSON response.
 # args: Our parsed command-line arguments
