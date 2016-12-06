@@ -1,7 +1,7 @@
 scalyr-tool
 ===========
 
-Command-line tool for accessing Scalyr services. Seven commands are currently supported:
+Command-line tool for accessing Scalyr services. The following commands are currently supported:
 
 - **query**: Retrieve log data
 - **numeric-query**: Retrieve numeric / graph data
@@ -23,9 +23,9 @@ Simply download the script file and make it executable. For instance:
     mv scalyr (some directory on your command path)
 
 You also need to make your Scalyr API tokens available to the tool. You can specify the token
-on the command line using the --token argument. However, it is more convenient to store your
+on the command line using the `--token` argument. However, it is more convenient to store your
 tokens in environment variables. This also keeps the tokens out of your console window and
-command history. On Unix systems, you can add the following to a file like .bash_profile:
+command history. On Unix systems, you can add the following to a file like `.bash_profile`:
 
     export scalyr_readlog_token='XXX'
     export scalyr_readconfig_token='YYY'
@@ -34,14 +34,14 @@ command history. On Unix systems, you can add the following to a file like .bash
 The values for XXX, YYY, and ZZZ can be found at [scalyr.com/keys](https://www.scalyr.com/keys) -- look
 for "Read Logs", "Read Config", and "Write Config" tokens, respectively.
 
-After adding these to .bash_profile, make sure to also paste them into your current console session so
-they take effect immediately.
+After adding these to `.bash_profile`, make sure to also paste them into your current console session,
+so that they take effect immediately. Alternatively, run `source ~/.bash_profile`.
 
 ## Querying logs
 
 The "query" command allows you to search and filter your logs, or simply retrieve raw log data. The
 capabilities are similar to the regular [log view](https://www.scalyr.com/events?mode=log), though you
-can retrieve more data at once and have several options for output format.
+can retrieve more data at once and have several output format options.
 
 Here are some usage examples:
 
