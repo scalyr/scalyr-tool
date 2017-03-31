@@ -3,15 +3,15 @@ scalyr-tool
 
 Command-line tool for accessing Scalyr services. The following commands are currently supported:
 
-- **query**: Retrieve log data
-- **numeric-query**: Retrieve numeric / graph data
-- **facet-query**: Retrieve common values for a field
-- **timeseries-query**: Retrieve numeric / graph data from a timeseries
-- **create-timeseries**: Create a timeseries for fast numeric queries
-- **get-file**: Fetch a configuration file
-- **put-file**: Create or update a configuration file
-- **list-files**: List all configuration files
-- **tail**: Provide a live 'tail' of a log
+- [**query**](#querying-logs): Retrieve log data
+- [**numeric-query**](#fetching-numeric-data): Retrieve numeric / graph data
+- [**facet-query**](#fetching-facet-counts): Retrieve common values for a field
+- [**timeseries-query**](#fetching-numeric-data-using-a-timeseries): Retrieve numeric / graph data from a timeseries
+- [**create-timeseries**](#creating-timeseries): Create a timeseries for fast numeric queries
+- [**get-file**](#retrieving-configuration-files): Fetch a configuration file
+- [**put-file**](#creating-or-updating-configuration-files): Create or update a configuration file
+- [**list-files**](#listing-configuration-files): List all configuration files
+- [**tail**](#tailing-logs): Provide a live 'tail' of a log
 
 
 ## Installation
@@ -118,7 +118,7 @@ If you need a higher limit, drop us a line at support@scalyr.com.
 
 ## Tailing logs
 
-The 'tail' command is similar to the 'query' command, except it runs continually, printing query results to stdout.
+The 'tail' command is similar to the '[query](#querying-logs)' command, except it runs continually, printing query results to stdout.
 
 Here are some usage examples:
 
