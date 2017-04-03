@@ -45,6 +45,12 @@ def getApiToken(args, environmentVariableName, permissionType):
 def print_stderr(message):
     sys.stderr.write(str(message) + '\n')
 
+def to_utf8( message ):
+    if type( message ) is unicode:
+        return message.encode( 'utf-8' )
+
+    return message
+
 # Send a request to the server, and return the parsed JSON response.
 # args: Our parsed command-line arguments
 # uri: Request path for this RPC, e.g. "api/query"
@@ -136,7 +142,7 @@ def commandGetFile(parser):
         modDate = datetime.datetime.fromtimestamp(int(response['modDate']) / 1000)
 
         print_stderr('Retrieved file "%s", version %d, created %s, modified %s, length %s' % (args.filepath, response['version'], createDate, modDate, len(response['content'])))
-        print(response['content'])
+        print( to_utf8( response['content'] ) )
 
 
 # Implement the "scalyr put-file" command.
@@ -222,9 +228,9 @@ def commandQuery(parser):
     matches = response['matches']
 
     if args.output == 'json':
-        print(rawResponse)
+        print( to_utf8( rawResponse ) )
     elif args.output == 'json-pretty':
-        print(json.dumps(response, sort_keys=True, indent=2, separators=(',', ': ')))
+        print( to_utf8( json.dumps(response, ensure_ascii=args.no_escape_unicode, sort_keys=True, indent=2, separators=(',', ': ')) ) )
     elif args.output == 'csv':
         columnList = columns.split(',')
 
@@ -241,9 +247,9 @@ def commandQuery(parser):
             for i in range(len(columnList)):
                 column = columnList[i]
                 if column in match:
-                    ar[i] = match.get(column)
+                    ar[i] = to_utf8( match.get(column))
                 elif column in attributes:
-                    ar[i] = attributes.get(column)
+                    ar[i] = to_utf8( attributes.get(column) )
                 else:
                     ar[i] = ''
             csvWriter.writerow(ar)
@@ -275,8 +281,7 @@ def printReadableRow(output, match):
 
     message = message.rstrip()
 
-    if type(message) is unicode:
-        message = message.encode('utf-8')
+    message = to_utf8( message )
     attributes = match.get('attributes')
 
     if output == 'singleline':
@@ -431,11 +436,11 @@ def commandNumericQuery(parser):
 
 
 # Print the output of a facet-query command.
-def printFacetResults(matchCount, values, outputFormat, rawResponse, response):
+def printFacetResults(matchCount, values, outputFormat, rawResponse, response, ensure_ascii=True):
     if outputFormat == 'json':
-        print(rawResponse)
+        print( to_utf8( rawResponse ) )
     elif outputFormat == 'json-pretty':
-        print(json.dumps(response, sort_keys=True, indent=2, separators=(',', ': ')))
+        print( to_utf8( json.dumps(response, ensure_ascii=ensure_ascii, sort_keys=True, indent=2, separators=(',', ': ') ) ))
     else:
         # csv
         csvBuffer = StringIO.StringIO()
@@ -481,7 +486,7 @@ def commandFacetQuery(parser):
         "priority": args.priority
     })
 
-    printFacetResults(response['matchCount'], response['values'], args.output, rawResponse, response)
+    printFacetResults(response['matchCount'], response['values'], args.output, rawResponse, response, ensure_ascii=args.no_escape_unicode)
 
 
 # Implement the "scalyr timeseries-query" command.
@@ -570,6 +575,9 @@ if __name__ == '__main__':
                         help='API access token')
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='enables additional diagnostic output')
+
+    parser.add_argument('--no-escape-unicode', action="store_false",
+                        help='When true, the json-pretty output format will show unicode characters than escaped unicode characters (the default for json-pretty is to use escaped characters)')
 
     command = None
     # Because the options are command-specific, we cannot fully parse the arguments until we know the
