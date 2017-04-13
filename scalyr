@@ -23,7 +23,7 @@ from collections import deque
 
 
 # Define some constants
-TOOL_VERSION = "0.1"
+TOOL_VERSION = "0.2"
 
 
 # Return the API token from the command line or environment variables.
@@ -89,7 +89,8 @@ def sendRequest(args, uri, parameterDict):
 
     if verbose:
         print_stderr("Request headers:")
-        print_stderr(headers)
+        for i in headers:
+            print_stderr("  %s: %s" % (i, headers[i]))
         print_stderr("Request body:")
         print_stderr(json.dumps(json.loads(parameterJson), sort_keys=True, indent=2, separators=(',', ': ')))
 
@@ -577,7 +578,7 @@ if __name__ == '__main__':
                         help='enables additional diagnostic output')
 
     parser.add_argument('--no-escape-unicode', action="store_false",
-                        help='When true, the json-pretty output format will show unicode characters than escaped unicode characters (the default for json-pretty is to use escaped characters)')
+                        help='When true, the json-pretty output format will show unicode characters rather than escaped unicode characters (the default for json-pretty is to use escaped characters)')
 
     command = None
     # Because the options are command-specific, we cannot fully parse the arguments until we know the
