@@ -317,7 +317,7 @@ def liveTail(apiToken, args):
     initial_lines = args.lines
 
     if initial_lines > max_matches:
-        print("Output of previous lines is limited to 1000 lines only")
+        print_stderr("Output of previous lines is limited to 1000 lines only")
         initial_lines = max_matches
 
     start_time = time.time()
@@ -326,7 +326,7 @@ def liveTail(apiToken, args):
 
     previous_matches = deque(maxlen=max_matches)
 
-    print("Beginning live tail..")
+    print_stderr("Beginning live tail..")
     while current_time - start_time < maximum_tail_time:
 
         # Send the query to the server.
@@ -350,7 +350,7 @@ def liveTail(apiToken, args):
         # have missed some of the intervening messages.
         row_count = len(new_matches)
         if not first and row_count >= max_matches:
-            print("[WARN] Too many messages for tail to keep up; some messages are not being shown.")
+            print_stderr("[WARN] Too many messages for tail to keep up; some messages are not being shown.")
 
         # print out any new matches, and add the ids to the list of matches we have already seen.
         # Also keep track of how many rows we have seen already, so the first time through we can
@@ -370,7 +370,7 @@ def liveTail(apiToken, args):
 
         current_time = time.time()
         first = False
-    print("----\nTo minimize server load, live tail expires after 10 minutes. If this is bothersome, please let us know at support@scalyr.com.\n")
+    print_stderr("----\nTo minimize server load, live tail expires after 10 minutes. If this is bothersome, please let us know at support@scalyr.com.\n")
 
 
 # Implement the 'scalyr tail' command
@@ -390,7 +390,7 @@ def commandTail(parser):
     try:
         liveTail(apiToken, args)
     except KeyboardInterrupt:
-        print("\nLive tail has quit.")
+        print_stderr("\nLive tail has quit.")
 
 
 # Implement the "scalyr numeric-query" command.
