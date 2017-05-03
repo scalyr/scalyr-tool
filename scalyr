@@ -164,6 +164,23 @@ def commandPutFile(parser):
     # Print the file content.
     print_stderr('File "%s" updated' % (args.filepath))
 
+# Implement the "scalyr delete-file" command.
+def commandDeleteFile(parser):
+    # Parse the command-line arguments.
+    parser.add_argument('filepath',
+                        help='server pathname of the file to delete, e.g. "/scalyr/alerts"')
+    args = parser.parse_args()
+
+    # Send the request to the server.
+    response, rawResponse = sendRequest(args, '/putFile', {
+        "token": getApiToken(args, 'scalyr_writeconfig_token', 'Write Config'),
+        "path": args.filepath,
+        "deleteFile": True
+    })
+
+    # Print the file content.
+    print_stderr('File "%s" deleted' % (args.filepath))
+
 
 # Implement the "scalyr list-files" command.
 def commandListFiles(parser):
@@ -562,6 +579,7 @@ if __name__ == '__main__':
       'create-timeseries': commandCreateTimeseries,
       'get-file': commandGetFile,
       'put-file': commandPutFile,
+      'delete-file': commandDeleteFile,
       'list-files': commandListFiles,
     }
 
