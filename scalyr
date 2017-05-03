@@ -161,7 +161,7 @@ def commandPutFile(parser):
         "content": content
     })
 
-    # Print the file content.
+    # Confirm file was updated.
     print_stderr('File "%s" updated' % (args.filepath))
 
 # Implement the "scalyr delete-file" command.
@@ -178,7 +178,7 @@ def commandDeleteFile(parser):
         "deleteFile": True
     })
 
-    # Print the file content.
+    # Confirm file was deleted.
     print_stderr('File "%s" deleted' % (args.filepath))
 
 

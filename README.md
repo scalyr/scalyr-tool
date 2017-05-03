@@ -10,7 +10,7 @@ Command-line tool for accessing Scalyr services. The following commands are curr
 - [**create-timeseries**](#creating-timeseries): Create a timeseries for fast numeric queries
 - [**get-file**](#retrieving-configuration-files): Fetch a configuration file
 - [**put-file**](#creating-or-updating-configuration-files): Create or update a configuration file
-- [**delete-file**](#creating-or-updating-configuration-files): Create or update a configuration file
+- [**delete-file**](#creating-or-updating-configuration-files): Delete a configuration file
 - [**list-files**](#listing-configuration-files): List all configuration files
 - [**tail**](#tailing-logs): Provide a live 'tail' of a log
 
@@ -413,7 +413,11 @@ Complete argument list:
     --verbose
         Writes detailed progress information to stderr.
 
+## Deleting configuration files
+
 The "delete-file" command allows you to delete a configuration file:
+
+Using the delete-file command is simple:
 
     # Delete the "Foo" dashboard
     scalyr delete-file /scalyr/dashboards/Foo
