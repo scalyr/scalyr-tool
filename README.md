@@ -356,7 +356,7 @@ Complete argument list:
         30-secound boundaries, so if the time span you query doesn't line up on a 30-second boundary,
         Scalyr will interpolate. As a result, counts may not be integers.)
     --token=xxx
-        Specify the API token. For this command, should be a "Read Logs" token.
+        Specify the API token. For this command, should be a "Write Config" token.
     --version
         Prints the current version number of this tool.
     --verbose
