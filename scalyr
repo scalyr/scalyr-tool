@@ -23,7 +23,7 @@ from collections import deque
 
 
 # Define some constants
-TOOL_VERSION = "0.2"
+TOOL_VERSION = "0.3"
 
 
 # Return the API token from the command line or environment variables.
@@ -510,8 +510,12 @@ def commandFacetQuery(parser):
 # Implement the "scalyr timeseries-query" command.
 def commandTimeseriesQuery(parser):
     # Parse the command-line arguments.
-    parser.add_argument('--timeseries', required=True,
+    parser.add_argument('--timeseries', default='', 
                         help='ID of the timeseries to query')
+    parser.add_argument('filter', nargs='?', default='',
+                        help='search term or filter expression, used only if --timeseries is not provided')
+    parser.add_argument('--function', default='',
+                        help='the value to compute from the events matching the filter, used only if --timeseries is not provided')
     parser.add_argument('--start', required=True,
                         help='beginning of the time range to query')
     parser.add_argument('--end', default='',
@@ -527,17 +531,26 @@ def commandTimeseriesQuery(parser):
     # Get the API token.
     apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
 
+		# build the query, in either flavor
+    query = {
+        "queryType": "numeric",
+        "startTime": args.start,
+        "endTime": args.end,
+        "buckets": args.buckets,
+        "priority": args.priority
+        }
+    
+    if args.timeseries == '':
+        query["filter"] = args.filter[0]
+        query["function"] = args.function
+    else:
+        query["timeseriesId"] = args.timeseries
+
+
     # Send the query to the server.
     response, rawResponse = sendRequest(args, '/api/timeseriesQuery', {
         "token": apiToken,
-        "queries": [{
-            "queryType": "numeric",
-            "timeseriesId": args.timeseries,
-            "startTime": args.start,
-            "endTime": args.end,
-            "buckets": args.buckets,
-            "priority": args.priority
-        }]
+        "queries": [ query ] 
     })
 
     # Print the results.
