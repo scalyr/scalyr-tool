@@ -23,7 +23,7 @@ from collections import deque
 
 
 # Define some constants
-TOOL_VERSION = "0.3"
+TOOL_VERSION = "0.4"
 
 
 # Return the API token from the command line or environment variables.
@@ -512,7 +512,7 @@ def commandTimeseriesQuery(parser):
     # Parse the command-line arguments.
     parser.add_argument('--timeseries', default='', 
                         help='ID of the timeseries to query')
-    parser.add_argument('filter', nargs='?', default='',
+    parser.add_argument('filter', nargs='*', default='',
                         help='search term or filter expression, used only if --timeseries is not provided')
     parser.add_argument('--function', default='',
                         help='the value to compute from the events matching the filter, used only if --timeseries is not provided')
