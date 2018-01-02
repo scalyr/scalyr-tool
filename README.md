@@ -102,11 +102,9 @@ one of the examples above.
 The 'singleline' output option is similar to the default, but places all of a record's attributes on
 a single line. This is denser, but can be harder to read.
 
-The 'csv' output option emits one line per log record, in Excel comma-separated-value format. To use
-this option, you must specify the columns argument.
-
-The 'json' output option emits the raw JSON response from the server, as documented at
-https://www.scalyr.com/help/api#query.
+The 'csv' output option emits one line per log record, in Excel comma-separated-value format (with 
+`CRLF` as the line separator, per the [spec](https://tools.ietf.org/html/rfc4180#page-2)). To use
+this option, you must specify the `--columns` argument.
 
 The 'json-pretty' output option also emits the JSON response from the server, but prettyprinted.
 
@@ -230,6 +228,17 @@ find the most common URLs accessed on your site, the most common user-agent stri
 response codes returned. (If a very large number of events match your search criteria, the results will be
 based on a random subsample of at least 500,000 matching events.)
 
+The default output format is CSV, sorted by count desc:
+
+```
+count,value
+4,value-the-first
+2,"other value"
+```
+
+_Note that CSV output uses `CRLF` as the line separator._
+
+
 Here are some usage examples:
 
     curl 'https://www.scalyr.com/api/facetQuery?queryType=facet&field=uriPath&startTime=1h&token=XXX'
@@ -255,7 +264,7 @@ Complete argument list:
         Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
         view. Defaults to the current time.
     --output=csv|json|json-pretty
-        How to display the results. 'csv' prints all values on a single line, separated by commas.
+        How to display the results. 'csv' prints one value (and its count) per line, separated by commas.
         'json' prints the raw JSON response from the server, as documented at
         https://www.scalyr.com/help/api#numericQuery. 'json-pretty' also prints the JSON response,
         but prettyprinted.
@@ -465,7 +474,7 @@ Complete argument list:
 
 ## TODO
 
-Add support for the "filter" and "function" arguments to https://www.scalyr.com/help/api#timeseriesQuery.
+Add option to use LF, rather than CRLF, when outputting CSV (for `facet-query` in particular).
 
 
 ## Revision History
