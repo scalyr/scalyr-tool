@@ -10,12 +10,26 @@ import datetime
 import json
 import csv
 
+# unicode string type, set to str initially as 'str' exists in both
+# python 2 and 3.  If python 2 we will override it with the unicode
+# type.  If python 3 we'll do nothing as 'str' is the unicode type
+# for python 3
+_unicode_type = str
+
+# are we python2 or not
+_python2 = False
+
 try:
     # Python 2 versions
     import httplib
     import StringIO
+
+    #if we are here then it's python 2 so set _unicode_type to unicode
+    _unicode_type = unicode
+    _python2 = True
+
 except ImportError:
-    # Python 3 versions
+    # Python 3+ versions
     import http.client as httplib
     import io as StringIO
 
@@ -45,8 +59,17 @@ def getApiToken(args, environmentVariableName, permissionType):
 def print_stderr(message):
     sys.stderr.write(str(message) + '\n')
 
-def to_utf8( message ):
-    if type( message ) is unicode:
+def output_encoded( message ):
+    """Converts a string to ensure the output will be utf8 so that output can be safely redirected
+    to a file without causing conversion errors.  This works differently in Python2 vs Python3
+
+    In Python2, we need to explicitly convert all unicode strings to utf8 otherwise we'll get a conversion
+        error if output contains unicode *and* output has been redirected to a file.
+    In Python3, output is utf8 by default and we need to leave the string alone - if we manually convert
+        python3 strings to utf8 then the output will wrap all strings in b''
+
+    """
+    if _python2 and type( message ) is _unicode_type:
         return message.encode( 'utf-8' )
 
     return message
@@ -143,7 +166,7 @@ def commandGetFile(parser):
         modDate = datetime.datetime.fromtimestamp(int(response['modDate']) / 1000)
 
         print_stderr('Retrieved file "%s", version %d, created %s, modified %s, length %s' % (args.filepath, response['version'], createDate, modDate, len(response['content'])))
-        print( to_utf8( response['content'] ) )
+        print( output_encoded( response['content'] ) )
 
 
 # Implement the "scalyr put-file" command.
@@ -246,9 +269,9 @@ def commandQuery(parser):
     matches = response['matches']
 
     if args.output == 'json':
-        print( to_utf8( rawResponse ) )
+        print( output_encoded( rawResponse ) )
     elif args.output == 'json-pretty':
-        print( to_utf8( json.dumps(response, ensure_ascii=args.no_escape_unicode, sort_keys=True, indent=2, separators=(',', ': ')) ) )
+        print( output_encoded( json.dumps(response, ensure_ascii=args.no_escape_unicode, sort_keys=True, indent=2, separators=(',', ': ')) ) )
     elif args.output == 'csv':
         columnList = columns.split(',')
 
@@ -265,9 +288,9 @@ def commandQuery(parser):
             for i in range(len(columnList)):
                 column = columnList[i]
                 if column in match:
-                    ar[i] = to_utf8( match.get(column))
+                    ar[i] = output_encoded( match.get(column))
                 elif column in attributes:
-                    ar[i] = to_utf8( attributes.get(column) )
+                    ar[i] = output_encoded( attributes.get(column) )
                 else:
                     ar[i] = ''
             csvWriter.writerow(ar)
@@ -299,7 +322,7 @@ def printReadableRow(output, match):
 
     message = message.rstrip()
 
-    message = to_utf8( message )
+    message = output_encoded( message )
     attributes = match.get('attributes')
 
     if output == 'singleline':
@@ -456,9 +479,9 @@ def commandNumericQuery(parser):
 # Print the output of a facet-query command.
 def printFacetResults(matchCount, values, outputFormat, rawResponse, response, ensure_ascii=True):
     if outputFormat == 'json':
-        print( to_utf8( rawResponse ) )
+        print( output_encoded( rawResponse ) )
     elif outputFormat == 'json-pretty':
-        print( to_utf8( json.dumps(response, ensure_ascii=ensure_ascii, sort_keys=True, indent=2, separators=(',', ': ') ) ))
+        print( output_encoded( json.dumps(response, ensure_ascii=ensure_ascii, sort_keys=True, indent=2, separators=(',', ': ') ) ))
     else:
         # csv
         csvBuffer = StringIO.StringIO()
@@ -466,7 +489,7 @@ def printFacetResults(matchCount, values, outputFormat, rawResponse, response, e
         csvWriter.writerow(['count', 'value'])
         for i in range(len(values)):
             valueAndCount = values[i]
-            csvWriter.writerow([valueAndCount.get('count'), unicode(valueAndCount.get('value')).encode("utf-8")])
+            csvWriter.writerow([valueAndCount.get('count'), output_encoded(valueAndCount.get('value'))])
         print(csvBuffer.getvalue())
 
 
