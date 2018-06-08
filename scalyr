@@ -625,7 +625,7 @@ if __name__ == '__main__':
                         help='specifies the action to be performed')
     parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
     parser.add_argument('--server', default='https://www.scalyr.com',
-                        help='URL for the Scalyr API server')
+                        help='URL for the Scalyr API server.  Defaults to https://www.scalyr.com. If you are using eu.scalyr.com then this should be set to https://eu.scalyr.com.')
     parser.add_argument('--token', default='',
                         help='API access token')
     parser.add_argument('--verbose', action='store_true', default=False,
