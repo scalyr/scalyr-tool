@@ -35,6 +35,10 @@ command history. On Unix systems, you can add the following to a file like `.bas
 The values for XXX, YYY, and ZZZ can be found at [scalyr.com/keys](https://www.scalyr.com/keys) -- look
 for "Read Logs", "Read Config", and "Write Config" tokens, respectively.
 
+Setting a custom Scalyr server can be done using the `--server` argument but also via environment variable:
+
+    export scalyr_server='https://eu.scalyr.com'
+
 After adding these to `.bash_profile`, make sure to also paste them into your current console session,
 so that they take effect immediately. Alternatively, run `source ~/.bash_profile`.
 
