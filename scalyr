@@ -87,7 +87,12 @@ def sendRequest(args, uri, parameterDict):
     if verbose:
         print_stderr("Using arguments: %s" % args)
 
-    serverAddress = args.server
+    # Allow to set custom scalyr_server via environment variable
+    if os.environ.get('scalyr_server'):
+        serverAddress = os.environ.get('scalyr_server')
+    else:
+        serverAddress = args.server
+
     useSSL = True
     if serverAddress.startswith("http://"):
         useSSL = False
