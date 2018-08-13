@@ -88,10 +88,12 @@ def sendRequest(args, uri, parameterDict):
         print_stderr("Using arguments: %s" % args)
 
     # Allow to set custom scalyr_server via environment variable
-    if os.environ.get('scalyr_server'):
+    serverAddress = args.server
+
+    if serverAddress == '' and os.environ.get('scalyr_server') is None:
+        serverAddress = 'https://www.scalyr.com'
+    if serverAddress == '':
         serverAddress = os.environ.get('scalyr_server')
-    else:
-        serverAddress = args.server
 
     useSSL = True
     if serverAddress.startswith("http://"):
@@ -629,7 +631,8 @@ if __name__ == '__main__':
     parser.add_argument('command', choices=all_commands.keys(),
                         help='specifies the action to be performed')
     parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
-    parser.add_argument('--server', default='https://www.scalyr.com',
+    # parser.add_argument('--server', default='https://www.scalyr.com',
+    parser.add_argument('--server', default='',
                         help='URL for the Scalyr API server.  Defaults to https://www.scalyr.com. If you are using eu.scalyr.com then this should be set to https://eu.scalyr.com.')
     parser.add_argument('--token', default='',
                         help='API access token')
