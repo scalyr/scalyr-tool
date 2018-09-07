@@ -682,6 +682,7 @@ if __name__ == '__main__':
     for arg in sys.argv[1:]:
         if arg in all_commands:
             command = arg
+            break
 
     # If we could not find a possible command, then just try to parse the commandline with the current options, which
     # we know will fail since there's no valid value for 'command'.
