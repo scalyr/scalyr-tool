@@ -350,7 +350,7 @@ Complete argument list:
         Writes detailed progress information to stderr.
 
 
-## Creating timeseries - deprecated
+## Creating timeseries
 
 This method is deprecated, and will eventually be removed from the Scalyr API.
 
