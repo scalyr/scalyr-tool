@@ -600,10 +600,6 @@ def commandCreateTimeseries(parser):
 
 if __name__ == '__main__':
 
-    # Python < 2.7 do not support TLS >= 1.2
-    if sys.version_info < (2,7):
-      sys.exit('Sorry, Python < 2.7 is not supported.')
-
     # All available commands
     all_commands = {
       'query': commandQuery,
