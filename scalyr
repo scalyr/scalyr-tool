@@ -93,26 +93,16 @@ def sendRequest(args, uri, parameterDict):
     if serverAddress is None:
         serverAddress = os.environ.get('scalyr_server', 'https://www.scalyr.com')
 
-    useSSL = True
     if serverAddress.startswith("http://"):
-        useSSL = False
-        serverAddress = serverAddress[7:]
+        print_stderr('Server address should start with https')
+        sys.exit(1)
     elif serverAddress.startswith("https://"):
         serverAddress = serverAddress[8:]
 
     if verbose:
-        if useSSL:
-            protocol = 'https'
-        else:
-            protocol = 'http'
-        print_stderr("Connecting to %s via %s" % (serverAddress, protocol))
+        print_stderr("Connecting to %s via %s" % (serverAddress, 'https'))
 
-    conn = None
-    if useSSL:
-        conn = httplib.HTTPSConnection(serverAddress)
-    else:
-        conn = httplib.HTTPConnection(serverAddress)
-
+    conn = httplib.HTTPSConnection(serverAddress)
     headers = {"Content-type": "application/json"}
 
     if verbose:
@@ -538,7 +528,7 @@ def commandFacetQuery(parser):
 # Implement the "scalyr timeseries-query" command.
 def commandTimeseriesQuery(parser):
     # Parse the command-line arguments.
-    parser.add_argument('--timeseries', default='', 
+    parser.add_argument('--timeseries', default='',
                         help='ID of the timeseries to query')
     parser.add_argument('filter', nargs='*', default='',
                         help='search term or filter expression, used only if --timeseries is not provided')
@@ -567,7 +557,7 @@ def commandTimeseriesQuery(parser):
         "buckets": args.buckets,
         "priority": args.priority
         }
-    
+
     if args.timeseries == '':
         query["filter"] = args.filter[0]
         query["function"] = args.function
@@ -578,7 +568,7 @@ def commandTimeseriesQuery(parser):
     # Send the query to the server.
     response, rawResponse = sendRequest(args, '/api/timeseriesQuery', {
         "token": apiToken,
-        "queries": [ query ] 
+        "queries": [ query ]
     })
 
     # Print the results.
@@ -609,6 +599,11 @@ def commandCreateTimeseries(parser):
 
 
 if __name__ == '__main__':
+
+    # Python < 2.7 do not support TLS >= 1.2
+    if sys.version_info < (2,7):
+      sys.exit('Sorry, Python < 2.7 is not supported.')
+
     # All available commands
     all_commands = {
       'query': commandQuery,
