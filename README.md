@@ -12,7 +12,6 @@ Command-line tool for accessing Scalyr services. The following commands are curr
 - [**delete-file**](#creating-or-updating-configuration-files): Delete a configuration file
 - [**list-files**](#listing-configuration-files): List all configuration files
 - [**tail**](#tailing-logs): Provide a live 'tail' of a log
-- [**create-timeseries**](#creating-timeseries): **Deprecated** Create a timeseries for fast numeric queries
 
 
 ## Installation
@@ -339,9 +338,6 @@ Complete argument list:
         Specifies the execution priority for this query; defaults to "high". Use "low" for scripted
         operations where a delay of a second or so is acceptable. Rate limits are tighter for high-
         priority queries.
-     --timeseries=xxx
-        Deprecated. The id of the timeseries to query, as returned by create-timeseries; if present the
-        'filter' and 'function' arguments will be ignored
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
     --version
@@ -349,17 +345,6 @@ Complete argument list:
     --verbose
         Writes detailed progress information to stderr.
 
-
-## Creating timeseries
-
-This method is deprecated, and will eventually be removed from the Scalyr API.
-
-`createTimeseries` creates a timeseries, and returns a numeric ID which can be passed to the
-[`timeseries-query`](#fetching-numeric-data-using-a-timeseries)  API without specifying `filter` and `function` arguments.
-
-Instead of using `create-timeseries`, you should specify `filter` and `function` arguments directly when using `timeseries-query`.
-
-If necessary, documentation for this method is available in the git history =)
 
 
 
