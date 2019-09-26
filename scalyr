@@ -538,10 +538,8 @@ def commandFacetQuery(parser):
 # Implement the "scalyr timeseries-query" command.
 def commandTimeseriesQuery(parser):
     # Parse the command-line arguments.
-    parser.add_argument('--timeseries', default='', 
-                        help='ID of the timeseries to query')
-    parser.add_argument('filter', nargs='*', default='',
-                        help='search term or filter expression, used only if --timeseries is not provided')
+    parser.add_argument('filter', nargs=1, default='',
+                        help='search term or filter expression')
     parser.add_argument('--function', default='',
                         help='the value to compute from the events matching the filter, used only if --timeseries is not provided')
     parser.add_argument('--start', required=True,
@@ -559,53 +557,25 @@ def commandTimeseriesQuery(parser):
     # Get the API token.
     apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
 
-		# build the query, in either flavor
+		# build the query
     query = {
         "queryType": "numeric",
+        "filter": args.filter[0],
+        "function": args.function,
         "startTime": args.start,
         "endTime": args.end,
         "buckets": args.buckets,
         "priority": args.priority
         }
-    
-    if args.timeseries == '':
-        query["filter"] = args.filter[0]
-        query["function"] = args.function
-    else:
-        query["timeseriesId"] = args.timeseries
-
 
     # Send the query to the server.
     response, rawResponse = sendRequest(args, '/api/timeseriesQuery', {
         "token": apiToken,
-        "queries": [ query ] 
+        "queries": [ query ]
     })
 
     # Print the results.
     printNumericResults(response['results'][0]['values'], args.output, rawResponse, response)
-
-
-# Implement the "scalyr create-timeseries" command.
-def commandCreateTimeseries(parser):
-    # Parse the command-line arguments.
-    parser.add_argument('filter', nargs=1, default='',
-                        help='search term or filter expression')
-    parser.add_argument('--function', default='',
-                        help='the value to compute from the events matching the filter')
-    args = parser.parse_args()
-
-    # Get the API token.
-    apiToken = getApiToken(args, 'scalyr_writeconfig_token', 'Write Config')
-
-    # Send the query to the server.
-    response, rawResponse = sendRequest(args, '/api/createTimeseries', {
-        "token": apiToken,
-        "queryType": "numeric",
-        "filter": args.filter[0],
-        "function": args.function
-    })
-
-    print(response['timeseriesId'])
 
 
 if __name__ == '__main__':
@@ -617,7 +587,6 @@ if __name__ == '__main__':
       'facet-query': commandFacetQuery,
       'timeseries-query': commandTimeseriesQuery,
       'timerseries-query': commandTimeseriesQuery,  # mispelling; kept for backwards compatibility
-      'create-timeseries': commandCreateTimeseries,
       'get-file': commandGetFile,
       'put-file': commandPutFile,
       'delete-file': commandDeleteFile,
