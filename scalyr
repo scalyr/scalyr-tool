@@ -245,6 +245,8 @@ def commandQuery(parser):
                         help='specifies the format in which matching log messages are displayed')
     parser.add_argument('--priority', choices=['high', 'low'], default='high',
                         help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
+    parser.add_argument('--continuationToken', default='',
+                        help='specifies the continuation token to use from a previous request')
 
     args = parser.parse_args()
 
@@ -257,8 +259,7 @@ def commandQuery(parser):
     # Get the API token.
     apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
 
-    # Send the query to the server.
-    response, rawResponse = sendRequest(args, '/api/query', {
+    params = {
       "token": apiToken,
       "queryType": "log",
       "filter": args.filter,
@@ -268,7 +269,13 @@ def commandQuery(parser):
       "pageMode": args.mode,
       "columns": columns,
       "priority": args.priority
-    })
+    }
+
+    if args.continuationToken:
+        params['continuationToken'] = args.continuationToken
+
+    # Send the query to the server.
+    response, rawResponse = sendRequest(args, '/api/query', params)
 
     # Print the log records.
     matches = response['matches']
