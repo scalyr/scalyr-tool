@@ -534,6 +534,67 @@ def commandFacetQuery(parser):
 
     printFacetResults(response['matchCount'], response['values'], args.output, rawResponse, response, ensure_ascii=args.no_escape_unicode)
 
+# Print the output of a power-query command.
+def printPowerResults(outputFormat, rawResponse, response, ensure_ascii=True):
+    matchingEvents = response['matchingEvents']
+    omittedEvents  = response['omittedEvents']
+    columns        = response['columns']
+    values         = response['values']
+    warnings       = response['warnings']
+
+    def col_name(col):
+        return col.get('name')
+
+    if outputFormat == 'json':
+        print( output_encoded( rawResponse ) )
+    elif outputFormat == 'json-pretty':
+        print( output_encoded( json.dumps(response, ensure_ascii=ensure_ascii, sort_keys=True, indent=2, separators=(',', ': ') ) ))
+    else:
+        # csv
+        csvBuffer = StringIO.StringIO()
+        csvWriter = csv.writer(csvBuffer, dialect='excel')
+
+        if (len(warnings) > 0):
+            csvWriter.writerow(warnings)
+        if (omittedEvents > 0):
+            csvWriter.writerow(["%d of %d events (%.2f%s) were omitted due to memory limits" % (omittedEvents, matchingEvents, omittedEvents / matchingEvents, '%')])
+
+        csvWriter.writerow(map(output_encoded, map(col_name, columns)))
+        for i in range(len(values)):
+            csvWriter.writerow(map(output_encoded, values[i]))
+        print(csvBuffer.getvalue())
+
+
+# Implement the "scalyr power-query" command.
+def commandPowerQuery(parser):
+    # Parse the command-line arguments.
+    parser.add_argument('filter', nargs=1,
+                        help='scalyr power query')
+    parser.add_argument('--start', required=True,
+                        help='beginning of the time range to query')
+    parser.add_argument('--end', default='',
+                        help='end of the time range to query')
+    parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
+                        help='specifies the format in which values are emitted')
+    parser.add_argument('--priority', choices=['high', 'low'], default='high',
+                        help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
+    args = parser.parse_args()
+
+    # Get the API token.
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+
+    # Send the query to the server.
+    response, rawResponse = sendRequest(args, '/api/powerQuery', {
+        "token": apiToken,
+        "queryType": "complex",
+        "query": args.filter[0],
+        "startTime": args.start,
+        "endTime": args.end,
+        "priority": args.priority
+    })
+
+    printPowerResults(args.output, rawResponse, response, ensure_ascii=args.no_escape_unicode)
+
 
 # Implement the "scalyr timeseries-query" command.
 def commandTimeseriesQuery(parser):
@@ -615,6 +676,7 @@ if __name__ == '__main__':
       'tail': commandTail,
       'numeric-query': commandNumericQuery,
       'facet-query': commandFacetQuery,
+      'power-query': commandPowerQuery,
       'timeseries-query': commandTimeseriesQuery,
       'timerseries-query': commandTimeseriesQuery,  # mispelling; kept for backwards compatibility
       'create-timeseries': commandCreateTimeseries,
