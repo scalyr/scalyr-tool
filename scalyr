@@ -536,11 +536,8 @@ def commandFacetQuery(parser):
 
 # Print the output of a power-query command.
 def printPowerResults(outputFormat, rawResponse, response, ensure_ascii=True):
-    matchingEvents = response['matchingEvents']
-    omittedEvents  = response['omittedEvents']
-    columns        = response['columns']
-    values         = response['values']
-    warnings       = response['warnings']
+    matchingEvents, omittedEvents = response['matchingEvents'], response['omittedEvents']
+    columns, values, warnings     = response['columns'], response['values'], response['warnings']
 
     def col_name(col):
         return col.get('name')
@@ -557,7 +554,7 @@ def printPowerResults(outputFormat, rawResponse, response, ensure_ascii=True):
         if (len(warnings) > 0):
             csvWriter.writerow(warnings)
         if (omittedEvents > 0):
-            csvWriter.writerow(["%d of %d events (%.2f%s) were omitted due to memory limits" % (omittedEvents, matchingEvents, omittedEvents / matchingEvents, '%')])
+            csvWriter.writerow(["%d of %d events (%.1f%%) were omitted due to memory limits" % (omittedEvents, matchingEvents, (omittedEvents*100) / matchingEvents)])
 
         csvWriter.writerow(map(output_encoded, map(col_name, columns)))
         for i in range(len(values)):
