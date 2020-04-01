@@ -232,7 +232,7 @@ def commandDownloadLog(parser):
     parser.add_argument('--serverHost', default='',
                         help='the serverHost containing the log file that you wish to download - cannot be empty')
     parser.add_argument('--logfile', default='agent.log',
-                        help='the logfile on the serverHost that you want to download - cannot be empty.  If the logfile does '
+                        help='the logfile on the serverHost that you want to download - defaults to agent.log.  If the logfile does '
                              'not start with a `/` then the logfile is assumed to be relative to /var/log/scalyr-agent-2')
     parser.add_argument('--start', default='',
                         help='beginning of the time range to query')
