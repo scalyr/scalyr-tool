@@ -238,6 +238,8 @@ def commandDownloadLog(parser):
                         help='beginning of the time range to query')
     parser.add_argument('--end', default='',
                         help='end of the time range to query')
+    parser.add_argument('--delay', type=int, default=0,
+                        help='The number of seconds to delay between continuations')
 
     args = parser.parse_args()
 
@@ -259,10 +261,12 @@ def commandDownloadLog(parser):
 
     mode = 'head'
     pageSize = 5000
-    start = ''
-    end = ''
+    start = args.start
+    end = args.end
     priority = 'low'
     output = 'multiline'
+
+    delay = args.delay
 
     query = '$logfile = "%s" $serverHost = "%s"' % (log_file, server_host)
 
@@ -298,6 +302,7 @@ def commandDownloadLog(parser):
         continuation_token = None
         if 'continuationToken' in response:
             continuation_token = response['continuationToken']
+            time.sleep(delay)
         else:
             has_rows = False
 
