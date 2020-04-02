@@ -132,8 +132,7 @@ def sendRequest(args, uri, parameterDict):
         print_stderr("After %s seconds, Scalyr server returned %s bytes; status %d / %s" % (int((datetime.datetime.now() - queryStartTime). total_seconds() * 1000) / 1000.0, len(responseBody), response.status, response.reason))
 
     if response.status != 200:
-        print_stderr('Response body:')
-        print_stderr(responseBody)
+        print_stderr('Response body: ' + responseBody)
         sys.exit(1)
 
     try:
