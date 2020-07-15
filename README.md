@@ -4,6 +4,7 @@ scalyr-tool
 Command-line tool for accessing Scalyr services. The following commands are currently supported:
 
 - [**query**](#querying-logs): Retrieve log data
+- [**power-query**](#power-queries): Execute PowerQuery
 - [**numeric-query**](#fetching-numeric-data): Retrieve numeric / graph data
 - [**facet-query**](#fetching-facet-counts): Retrieve common values for a field
 - [**timeseries-query**](#fetching-numeric-data-using-a-timeseries): Retrieve numeric / graph data from a timeseries
@@ -108,6 +109,63 @@ a single line. This is denser, but can be harder to read.
 The 'csv' output option emits one line per log record, in Excel comma-separated-value format (with
 `CRLF` as the line separator, per the [spec](https://tools.ietf.org/html/rfc4180#page-2)). To use
 this option, you must specify the `--columns` argument.
+
+The 'json-pretty' output option also emits the JSON response from the server, but prettyprinted.
+
+#### Usage limits
+
+Your command line and API queries are limited to 30,000 milliseconds of server processing time,
+replenished at 36,000 milliseconds per hour. If you exceed this limit, your queries will be intermittently
+refused. (Your other uses of Scalyr, such as log uploading or queries via the web site, will not be impacted.)
+If you need a higher limit, drop us a line at support@scalyr.com.
+
+## Power Queries
+
+The "power-query" command allows you to execute a PowerQuery. The
+capabilities are similar to the regular [PowerQuery](https://www.scalyr.com/query), though you
+can retrieve more data at once and have several output format options.
+
+Here are some usage examples:
+
+    # Display log volume summary by forlogfile for the last 24 hours
+    scalyr power-query "tag='logVolume' metric='logBytes' | group sum(value) by forlogfile" --start="24h"
+
+    # Display a table of requests, errors and error rate for the last 7 days, in pretty-printed JSON
+    scalyr power-query "dataset = 'accesslog' | group requests = count(), errors = count(status == 404) \
+    by uriPath | let rate = errors / requests | filter rate > 0.01 | sort -rate" --start="7d" --end="0d" \
+    --output=json-pretty
+
+Complete argument list:
+
+    scalyr power-query [query] [options...]
+        The query specifies the PowerQuery. It uses the same syntax as the "PowerQueries"
+        page which is documented [here](https://app.scalyr.com/help/power-queries).
+
+    --start=xxx
+        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
+        the PowerQueries page. This field is required.
+    --end=xxx
+        Specify the end of the time range to query. Uses the same syntax as the "End" field in the PowerQueries page. 
+        Defaults to 1 day after the start time if a start time is given.
+    --output=csv|json|json-pretty
+        How to display the log records (see below).
+    --version
+        Prints the current version number of this tool.
+    --priority=high|low
+        Specifies the execution priority for this query; defaults to "high". Use "low" for scripted
+        operations where a delay of a second or so is acceptable. Rate limits are tighter for high-
+        priority queries.
+    --token=xxx
+        Specify the API token. For this command, should be a "Read Logs" token.
+    --verbose
+        Writes detailed progress information to stderr.
+
+#### Output formats
+
+By default, the power-query command outputs in 'csv' format, which emits one line per log record, in Excel 
+comma-separated-value format (with `CRLF` as the line separator, per the [spec](https://tools.ietf.org/html/rfc4180#page-2)). 
+
+The 'json' output option, not surprisingly, emits a JSON response.
 
 The 'json-pretty' output option also emits the JSON response from the server, but prettyprinted.
 
