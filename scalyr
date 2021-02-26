@@ -81,11 +81,6 @@ def getProxyAddress(args):
 def parseProxyAddress(url):
     parsedProxyAddress = urlparse(url)
 
-    if url.startswith("http://"):
-        url = url.split(':')[1]
-        if url.startswith("//"):
-           url = url.strip('//')
-
     return parsedProxyAddress
 
 # Print a string to stderr.
