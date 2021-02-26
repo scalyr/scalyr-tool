@@ -23,7 +23,7 @@ try:
     # Python 2 versions
     import httplib
     import StringIO
-
+    from urlparse import urlparse
     #if we are here then it's python 2 so set _unicode_type to unicode
     _unicode_type = unicode
     _python2 = True
@@ -32,6 +32,7 @@ except ImportError:
     # Python 3+ versions
     import http.client as httplib
     import io as StringIO
+    from urllib.parse import urlparse
 
 from collections import deque
 
@@ -54,6 +55,38 @@ def getApiToken(args, environmentVariableName, permissionType):
 
     return apiToken
 
+
+def getProxyAddress(args):
+    proxyAddress = args.proxy
+
+
+    if proxyAddress is None:
+       #Check if we have a environment variable
+       if os.environ.get('http_proxy'):
+          proxyAddress = os.environ.get('http_proxy')
+          useProxy = True
+       if os.environ.get('https_proxy'):
+          proxyAddress = os.environ.get('https_proxy')
+          useProxy = True
+    # Setup proxy connection
+
+    if proxyAddress:
+       useProxy = True
+    else:
+       useProxy = False
+
+
+    return proxyAddress, useProxy
+
+def parseProxyAddress(url):
+    parsedProxyAddress = urlparse(url)
+
+    if url.startswith("http://"):
+        url = url.split(':')[1]
+        if url.startswith("//"):
+           url = url.strip('//')
+
+    return parsedProxyAddress
 
 # Print a string to stderr.
 def print_stderr(message):
@@ -92,24 +125,8 @@ def sendRequest(args, uri, parameterDict):
 
     if serverAddress is None:
         serverAddress = os.environ.get('scalyr_server', 'https://www.scalyr.com')
-
-    # Setup proxy connection
-    proxyAddress = args.proxy
-
-
-    if proxyAddress is None:
-       #Check if we have a environment variable
-       if os.environ.get('http_proxy'):
-          proxyAddress = os.environ.get('http_proxy')
-          useProxy = True
-       if os.environ.get('https_proxy'):
-          proxyAddress = os.environ.get('https_proxy')
-          useProxy = True
-
-    if proxyAddress:
-       useProxy = True
-    else:
-       useProxy = False
+    
+    proxyAddress, useProxy = getProxyAddress(args)
 
     if verbose:
         if useProxy:
@@ -134,12 +151,9 @@ def sendRequest(args, uri, parameterDict):
 
     conn = None
     if useSSL and useProxy:
-        if proxyAddress.startswith("http://"):
-            proxyAddress = proxyAddress.split(':')[1]
-            if proxyAddress.startswith("//"):
-               proxyAddress = proxyAddress.strip('//')
-               conn = httplib.HTTPSConnection(proxyAddress, '80')
-               conn.set_tunnel(serverAddress)
+        proxyAddress = parseProxyAddress(proxyAddress)
+        conn = httplib.HTTPSConnection(proxyAddress.hostname, proxyAddress.port)
+        conn.set_tunnel(serverAddress)
     elif useSSL:
         conn = httplib.HTTPSConnection(serverAddress)
     else:
