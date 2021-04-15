@@ -64,10 +64,12 @@ def getProxyAddress(args):
         # Check if we have a environment variable
         if os.environ.get('http_proxy'):
             proxyAddress = os.environ.get('http_proxy')
-            useProxy = True
+        elif os.environ.get('HTTP_PROXY'):
+            proxyAddress = os.environ.get('HTTP_PROXY')
         if os.environ.get('https_proxy'):
             proxyAddress = os.environ.get('https_proxy')
-            useProxy = True
+        elif os.environ.get('HTTPS_PROXY'):
+            proxyAddress = os.environ.get('HTTPS_PROXY')
     # Setup proxy connection
 
     if proxyAddress:
