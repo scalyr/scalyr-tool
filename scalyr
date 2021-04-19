@@ -23,6 +23,7 @@ try:
     # Python 2 versions
     import httplib
     import StringIO
+    from urlparse import urlparse
 
     #if we are here then it's python 2 so set _unicode_type to unicode
     _unicode_type = unicode
@@ -32,6 +33,7 @@ except ImportError:
     # Python 3+ versions
     import http.client as httplib
     import io as StringIO
+    from urllib.parse import urlparse
 
 from collections import deque
 
@@ -53,6 +55,35 @@ def getApiToken(args, environmentVariableName, permissionType):
         sys.exit(1)
 
     return apiToken
+
+
+def getProxyAddress(args):
+    proxyAddress = args.proxy
+
+    if proxyAddress is None:
+        # Check if we have a environment variable
+        if os.environ.get('http_proxy'):
+            proxyAddress = os.environ.get('http_proxy')
+        elif os.environ.get('HTTP_PROXY'):
+            proxyAddress = os.environ.get('HTTP_PROXY')
+        if os.environ.get('https_proxy'):
+            proxyAddress = os.environ.get('https_proxy')
+        elif os.environ.get('HTTPS_PROXY'):
+            proxyAddress = os.environ.get('HTTPS_PROXY')
+    # Setup proxy connection
+
+    if proxyAddress:
+        useProxy = True
+    else:
+        useProxy = False
+
+    return proxyAddress, useProxy
+
+
+def parseProxyAddress(url):
+    parsedProxyAddress = urlparse(url)
+
+    return parsedProxyAddress
 
 
 # Print a string to stderr.
@@ -93,6 +124,14 @@ def sendRequest(args, uri, parameterDict):
     if serverAddress is None:
         serverAddress = os.environ.get('scalyr_server', 'https://www.scalyr.com')
 
+    proxyAddress, useProxy = getProxyAddress(args)
+
+    if verbose:
+        if useProxy:
+            print_stderr("Using proxy: %s" % proxyAddress)
+        else:
+            print_stderr("No proxy configuration found")
+
     useSSL = True
     if serverAddress.startswith("http://"):
         useSSL = False
@@ -108,7 +147,15 @@ def sendRequest(args, uri, parameterDict):
         print_stderr("Connecting to %s via %s" % (serverAddress, protocol))
 
     conn = None
-    if useSSL:
+    if useSSL and useProxy:
+        proxyAddress = parseProxyAddress(proxyAddress)
+        conn = httplib.HTTPSConnection(proxyAddress.hostname, proxyAddress.port)
+        conn.set_tunnel(serverAddress)
+    elif useProxy:
+        proxyAddress = parseProxyAddress(proxyAddress)
+        conn = httplib.HTTPConnection(proxyAddress.hostname, proxyAddress.port)
+        conn.set_tunnel(serverAddress)
+    elif useSSL:
         conn = httplib.HTTPSConnection(serverAddress)
     else:
         conn = httplib.HTTPConnection(serverAddress)
@@ -672,6 +719,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--no-escape-unicode', action="store_false",
                         help='When true, the json-pretty output format will show unicode characters rather than escaped unicode characters (the default for json-pretty is to use escaped characters)')
+
+    parser.add_argument('--proxy', help='Proxy to connect through')
 
     command = None
     # Because the options are command-specific, we cannot fully parse the arguments until we know the
