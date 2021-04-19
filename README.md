@@ -96,7 +96,7 @@ Complete argument list:
         Specify the API token. For this command, should be a "Read Logs" token.
     --verbose
         Writes detailed progress information to stderr.
-    --proxy=xxx
+    --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
 
@@ -162,7 +162,7 @@ Complete argument list:
         Specify the API token. For this command, should be a "Read Logs" token.
     --verbose
         Writes detailed progress information to stderr.
-    --proxy=xxx
+    --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
 
@@ -287,7 +287,7 @@ Complete argument list:
         Prints the current version number of this tool.
     --verbose
         Writes detailed progress information to stderr.
-    --proxy=xxx
+    --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
 
@@ -348,7 +348,7 @@ Complete argument list:
         Prints the current version number of this tool.
     --verbose
         Writes detailed progress information to stderr.
-    --proxy=xxx
+    --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
 
@@ -414,7 +414,7 @@ Complete argument list:
         Prints the current version number of this tool.
     --verbose
         Writes detailed progress information to stderr.
-    --proxy=xxx
+    --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
 
@@ -445,7 +445,7 @@ Complete argument list:
         Specify the API token. For this command, should be a "Read Config" token.
     --verbose
         Writes detailed progress information to stderr.
-    --proxy=xxx
+    --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
 
@@ -473,7 +473,7 @@ Complete argument list:
         Specify the API token. For this command, should be a "Write Config" token.
     --verbose
         Writes detailed progress information to stderr.
-    --proxy=xxx
+    --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
 
@@ -502,7 +502,7 @@ Complete argument list:
         Specify the API token. For this command, should be a "Read Config" token.
     --verbose
         Writes detailed progress information to stderr.
-    --proxy=xxx
+    --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
 
