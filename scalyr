@@ -384,9 +384,9 @@ def printReadableRow(output, match):
     attributes = match.get('attributes')
 
     if output == 'singleline':
-        print('%s%s%s' % (timestamp, severity, message)),
+        print('%s%s%s' % (timestamp, severity, message), end=""),
         for attrName in sorted(attributes.keys()):
-            print(' %s=%s' % (attrName, attributes[attrName])),
+            print(' %s=%s' % (attrName, attributes[attrName]), end=""),
         print('')
     elif output == 'messageonly':
         print(message)
