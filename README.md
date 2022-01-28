@@ -231,10 +231,12 @@ If the clocks on the servers sending log messages to Scalyr are significantly ou
 
 The "numeric-query" command allows you to retrieve numeric data, e.g. for graphing. You can count the
 rate of events matching some criterion (e.g. error rate), or retrieve a numeric field (e.g. response
-size).
+size). 
 
-If you will be invoking the same query repeatedly (e.g. in a script), you may want to use the
-[`timeseries-query`](#fetching-numeric-data-using-a-timeseries) command rather than `numeric-query`.
+A numeric query is a special case of a [timeseries-query](#fetching-numeric-data-using-a-timeseries) with flags
+`createSummaries = false`, `onlyUseSummaries = false`. If you will be invoking the same query repeatedly (e.g. in a script), 
+you may want to use the timeseries query command with `createSummaries = true` (as is default) rather than 
+`numeric-query`.
 
 The commands take the same options and return the same data, but for `timeseries-query` invocations we create a
 timeseries on the backend for each unique filter/function pair.  Timeseries queries execute near-instantaneously, and
@@ -384,7 +386,7 @@ no matter what, but will initially return incomplete results until backfill (cov
 This can be a cost-effective way to seed a new timeseries with a long backfill period when you don't need complete
 results right away.
 
-Issuing a query with `createSummaries = false`, `onlyUseSummaries = false` is equivalent to a [`numeric-query`](#Fetching numeric data) call.
+Issuing a timeseries command with `createSummaries = false`, `onlyUseSummaries = false` is equivalent to a [numeric-query](#Fetching numeric data) command.
 
 Usage is identical to the numeric-query command:
 
