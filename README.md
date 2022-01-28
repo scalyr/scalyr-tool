@@ -363,10 +363,28 @@ If you need a higher limit, drop us a line at support@scalyr.com.
 
 ## Fetching numeric data using a timeseries
 
-The "timeseries-query" command allows you to retrieve numeric data using a timeseries defined using the
-create-timeseries command. (Note that the [Scalyr API](https://www.scalyr.com/help/api#timeseriesQuery)
+A timeseries precomputes a numeric query, allowing you to execute queries almost instantaneously, and without
+exhausting your query execution limit.  This is especially useful if you are using the Scalyr API to feed a
+home-built dashboard, alerting system, or other automated tool. Note that the [Scalyr API](https://www.scalyr.com/help/api#timeseriesQuery)
 allows multiple timeseries queries in a single API invocation, but the command-line tool only supports
-one query at a time.)
+one query at a time.
+
+When a new timeseries is defined, we immediately start live updating of that timeseries from the ingestion pipeline.
+In addition, we begin a background process to extend the timeseries backward in time, so that it covers the full
+timespan of your query. This backfill process is automatic, and if you later issue the same query with an even
+earlier start time, we will extend the backfill to cover that as well.
+To change this behavior, set `createSummaries` to false.
+
+A related flag, `onlyUseSummaries`, controls whether this API call should only use preexisting timeseries or should
+actually execute the queries against the event database. If set to true, then your API call is guaranteed to return
+quickly and to execute inexpensively, but with possibly-incomplete results. If set to false, the call  is slower
+& more expensive, but will be complete.
+Issuing a new query over the past 3 weeks with `createSummaries = true`, `onlyUseSummaries = true` will return quickly
+no matter what, but will initially return incomplete results until backfill (covering the past 3 weeks) is complete.
+This can be a cost-effective way to seed a new timeseries with a long backfill period when you don't need complete
+results right away.
+
+Issuing a query with `createSummaries = false`, `onlyUseSummaries = false` is equivalent to a [`numeric-query`](#Fetching numeric data) call.
 
 Usage is identical to the numeric-query command:
 
@@ -375,10 +393,10 @@ Usage is identical to the numeric-query command:
 Complete argument list:
 
     scalyr timeseries-query [filter] [--function xxx] --start xxx [options...]
-        Just like numeric-query, but with Scalyr creating a timeseries for you in the background
+        Just like numeric-query, but with Scalyr creating a timeseries for you in the background, unless `createSummaries = false`
 
     scalyr timeseries-query --timeseries <timeseriesid> --start xxx [options...]
-        To query a timeseries created using create-timeseries
+        To query a timeseries created using create-timeseries 
 
     --start=xxx
         Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
@@ -408,6 +426,11 @@ Complete argument list:
         Specifies the execution priority for this query; defaults to "high". Use "low" for scripted
         operations where a delay of a second or so is acceptable. Rate limits are tighter for high-
         priority queries.
+    --onlyUseSummaries=true|false
+        Specifies whether to only query summaries, or to search the column store for any summaries not yet populated.
+        Defaults to false.
+    --createSummaries=true|false
+        Specifies whether to create summaries for this query if they do not already exist. Defaults to true.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
     --version
