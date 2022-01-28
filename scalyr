@@ -664,10 +664,10 @@ def commandTimeseriesQuery(parser):
                         help='specifies the format in which numbers are emitted')
     parser.add_argument('--priority', choices=['high', 'low'], default='high',
                         help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
-    parser.add_argument('--useOnlySummaries', choices=['true', 'false'], default='false',
-                        help='specifies whether to only query summaries, or to search the column store for any summaries not yet populated')
-    parser.add_argument('--createSummaries', choices=['true', 'false'], default='true',
-                        help='specifies whether to create summaries for this query if they do not already exist')
+    parser.add_argument('--onlyUseSummaries', action='store_true', default=False,
+                        help='specifies to query only summaries, and will not search the column store for any summaries not yet populated')
+    parser.add_argument('--no-createSummaries', dest='createSummaries', action='store_false', default=True,
+                        help='specifies to not create summaries for this query')
     args = parser.parse_args()
 
     # Get the API token.
