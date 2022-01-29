@@ -237,9 +237,9 @@ A numeric query is a special case of a [timeseries-query](#fetching-numeric-data
 `--no-createSummaries`. If you will be invoking the same query repeatedly (e.g. in a script), 
 you may want to use the timeseries query command rather than `numeric-query`.
 
-The commands take the same options and return the same data, but for `timeseries-query` invocations we create a
-timeseries on the backend for each unique filter/function pair.  Timeseries queries execute near-instantaneously, and
-avoid exhausting your query execution limit (see below).
+The commands take the same options and return the same data, but for `timeseries-query` invocations without
+`--no-createSummaries` we create a timeseries on the backend for each unique filter/function pair.  
+This query will execute near-instantaneously, and avoid exhausting your query execution limit (see below).
 
 Here are some usage examples:
 
@@ -378,11 +378,11 @@ To change this behavior, use `--no-createSummaries`.
 
 A related flag, `--onlyUseSummaries`, controls whether this API call should only use preexisting timeseries or should
 actually execute the queries against the event database. If the flag is used, then your API call is guaranteed to return
-quickly and to execute inexpensively, but with possibly-incomplete results. If set to false, the call  is slower
+quickly and to execute inexpensively, but with possibly empty results. If set to false, the call  is slower
 & more expensive, but will be complete.
 Issuing a new query over the past 3 weeks with `--onlyUseSummaries` will return quickly
-no matter what, but will initially return incomplete results until backfill (covering the past 3 weeks) is complete.
-This can be a cost-effective way to seed a new timeseries with a long backfill period when you don't need complete
+no matter what, but will initially return empty results until backfill (covering the past 3 weeks) is complete.
+This can be a cost-effective way to seed a new timeseries with a long backfill period when you don't need
 results right away.
 
 Issuing a timeseries command with `--no-createSummaries` is equivalent to a [numeric-query](#Fetching numeric data) command.
@@ -430,8 +430,9 @@ Complete argument list:
         priority queries.
     --onlyUseSummaries
         Specifies to only query summaries, and not to search the column store for any summaries not yet populated.
+        No results will be returned unless the summaries queried have been backfilled. 
     --no-createSummaries
-        Specifies to not create summaries for this query.
+        Specifies to not create summaries for this query. 
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
     --version
