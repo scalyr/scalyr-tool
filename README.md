@@ -233,12 +233,12 @@ The "numeric-query" command allows you to retrieve numeric data, e.g. for graphi
 rate of events matching some criterion (e.g. error rate), or retrieve a numeric field (e.g. response
 size). 
 
-A numeric query is a special case of a [timeseries-query](#fetching-numeric-data-using-a-timeseries) with flag
-`--no-createSummaries`. If you will be invoking the same query repeatedly (e.g. in a script), 
+A numeric query is a special case of a [timeseries-query](#fetching-numeric-data-using-a-timeseries) with argument
+`--no-create-summaries`. If you will be invoking the same query repeatedly (e.g. in a script), 
 you may want to use the timeseries query command rather than `numeric-query`.
 
 The commands take the same options and return the same data, but for `timeseries-query` invocations without
-`--no-createSummaries` we create a timeseries on the backend for each unique filter/function pair.  
+`--no-create-summaries` we create a timeseries on the backend for each unique filter/function pair.  
 This query will execute near-instantaneously, and avoid exhausting your query execution limit (see below).
 
 Here are some usage examples:
@@ -374,18 +374,18 @@ When a new timeseries is defined, we immediately start live updating of that tim
 In addition, we begin a background process to extend the timeseries backward in time, so that it covers the full
 timespan of your query. This backfill process is automatic, and if you later issue the same query with an even
 earlier start time, we will extend the backfill to cover that as well.
-To change this behavior, use `--no-createSummaries`.
+To change this behavior, use `--no-create-summaries`.
 
-A related flag, `--onlyUseSummaries`, controls whether this API call should only use preexisting timeseries or should
-actually execute the queries against the event database. If the flag is used, then your API call is guaranteed to return
+A related argument, `--only-use-summaries`, controls whether this API call should only use preexisting timeseries or should
+actually execute the queries against the event database. If the argument is used, then your API call is guaranteed to return
 quickly and to execute inexpensively, but with possibly empty results. If set to false, the call  is slower
 & more expensive, but will be complete.
-Issuing a new query over the past 3 weeks with `--onlyUseSummaries` will return quickly
+Issuing a new query over the past 3 weeks with `--only-use-summaries` will return quickly
 no matter what, but will initially return empty results until backfill (covering the past 3 weeks) is complete.
 This can be a cost-effective way to seed a new timeseries with a long backfill period when you don't need
 results right away.
 
-Issuing a timeseries command with `--no-createSummaries` is equivalent to a [numeric-query](#Fetching numeric data) command.
+Issuing a timeseries command with `--no-create-summaries` is equivalent to a [numeric-query](#Fetching numeric data) command.
 
 Usage is identical to the numeric-query command:
 
@@ -394,7 +394,7 @@ Usage is identical to the numeric-query command:
 Complete argument list:
 
     scalyr timeseries-query [filter] [--function xxx] --start xxx [options...]
-        Just like numeric-query if `--no-createSummaries` is specified. Otherwise Scalyr will create a timeseries for
+        Just like numeric-query if `--no-create-summaries` is specified. Otherwise Scalyr will create a timeseries for
         you in the background.
 
     scalyr timeseries-query --timeseries <timeseriesid> --start xxx [options...]
@@ -428,10 +428,10 @@ Complete argument list:
         Specifies the execution priority for this query; defaults to "high". Use "low" for scripted
         operations where a delay of a second or so is acceptable. Rate limits are tighter for high-
         priority queries.
-    --onlyUseSummaries
+    --only-use-summaries
         Specifies to only query summaries, and not to search the column store for any summaries not yet populated.
         No results will be returned unless the summaries queried have been backfilled. 
-    --no-createSummaries
+    --no-create-summaries
         Specifies to not create summaries for this query. 
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.

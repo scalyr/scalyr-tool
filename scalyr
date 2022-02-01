@@ -664,9 +664,9 @@ def commandTimeseriesQuery(parser):
                         help='specifies the format in which numbers are emitted')
     parser.add_argument('--priority', choices=['high', 'low'], default='high',
                         help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
-    parser.add_argument('--onlyUseSummaries', action='store_true', default=False,
+    parser.add_argument('--only-use-summaries', dest='onlyUseSummaries', action='store_true', default=False,
                         help='specifies to query only summaries, and will not search the column store for any summaries not yet populated')
-    parser.add_argument('--no-createSummaries', dest='createSummaries', action='store_false', default=True,
+    parser.add_argument('--no-create-summaries', dest='createSummaries', action='store_false', default=True,
                         help='specifies to not create summaries for this query')
     args = parser.parse_args()
 
