@@ -231,14 +231,15 @@ If the clocks on the servers sending log messages to Scalyr are significantly ou
 
 The "numeric-query" command allows you to retrieve numeric data, e.g. for graphing. You can count the
 rate of events matching some criterion (e.g. error rate), or retrieve a numeric field (e.g. response
-size).
+size). 
 
-If you will be invoking the same query repeatedly (e.g. in a script), you may want to use the
-[`timeseries-query`](#fetching-numeric-data-using-a-timeseries) command rather than `numeric-query`.
+A numeric query is equivalent to a [timeseries-query](#fetching-numeric-data-using-a-timeseries) with argument
+`--no-create-summaries` and without `--only-use-summaries`. If you will be invoking the same query repeatedly (e.g. in a script), 
+you may want to use the timeseries query command rather than `numeric-query`.
 
-The commands take the same options and return the same data, but for `timeseries-query` invocations we create a
-timeseries on the backend for each unique filter/function pair.  Timeseries queries execute near-instantaneously, and
-avoid exhausting your query execution limit (see below).
+The commands take the same options and return the same data, but for `timeseries-query` invocations without
+`--no-create-summaries` we create a timeseries on the backend for each unique filter/function pair.  
+This query will execute near-instantaneously, and avoid consuming your account's query budget (see below).
 
 Here are some usage examples:
 
@@ -363,10 +364,29 @@ If you need a higher limit, drop us a line at support@scalyr.com.
 
 ## Fetching numeric data using a timeseries
 
-The "timeseries-query" command allows you to retrieve numeric data using a timeseries defined using the
-create-timeseries command. (Note that the [Scalyr API](https://www.scalyr.com/help/api#timeseriesQuery)
+A timeseries precomputes a numeric query, allowing you to execute queries almost instantaneously, and without
+consuming your account's query budget.  This is especially useful if you are using the Scalyr API to feed a
+home-built dashboard, alerting system, or other automated tool. Note that the [Scalyr API](https://www.scalyr.com/help/api#timeseriesQuery)
 allows multiple timeseries queries in a single API invocation, but the command-line tool only supports
-one query at a time.)
+one query at a time.
+
+When a new timeseries is defined, we immediately start live updating of that timeseries from the ingestion pipeline.
+In addition, we begin a background process to extend the timeseries backward in time, so that it covers the full
+timespan of your query. This backfill process is automatic, and if you later issue the same query with an even
+earlier start time, we will extend the backfill to cover that as well.
+To change this behavior, use `--no-create-summaries`.
+
+A related argument, `--only-use-summaries`, controls whether this API call should only use preexisting timeseries or should
+execute the queries against the event database if no matching summary exists. If this argument is used, then your API call 
+is guaranteed to return quickly and to execute inexpensively, but with possibly empty results. If this argument is not used, 
+the call may be slower & more expensive, but will be complete.
+For example, issuing a new query over the past 3 weeks with `--only-use-summaries` will return quickly
+no matter what, but will initially return empty results until backfill (covering the past 3 weeks) is complete.
+This can be a cost-effective way to seed a new timeseries with a long backfill period when you don't need
+results right away.
+
+Issuing a timeseries command with `--no-create-summaries` and without `--only-use-summaries` is equivalent to a
+[numeric-query](#Fetching numeric data) command.
 
 Usage is identical to the numeric-query command:
 
@@ -375,10 +395,11 @@ Usage is identical to the numeric-query command:
 Complete argument list:
 
     scalyr timeseries-query [filter] [--function xxx] --start xxx [options...]
-        Just like numeric-query, but with Scalyr creating a timeseries for you in the background
+        Just like numeric-query if `--no-create-summaries` is specified. Otherwise Scalyr will create a timeseries for
+        you in the background.
 
     scalyr timeseries-query --timeseries <timeseriesid> --start xxx [options...]
-        To query a timeseries created using create-timeseries
+        To query a timeseries created using create-timeseries 
 
     --start=xxx
         Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
@@ -408,6 +429,11 @@ Complete argument list:
         Specifies the execution priority for this query; defaults to "high". Use "low" for scripted
         operations where a delay of a second or so is acceptable. Rate limits are tighter for high-
         priority queries.
+    --only-use-summaries
+        Specifies to only query summaries, and not to search the column store for any summaries not yet populated.
+        No results will be returned unless the summaries queried have been backfilled. 
+    --no-create-summaries
+        Specifies to not create summaries for this query. 
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
     --version

@@ -663,6 +663,12 @@ def commandTimeseriesQuery(parser):
                         help='specifies the format in which numbers are emitted')
     parser.add_argument('--priority', choices=['high', 'low'], default='high',
                         help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
+    parser.add_argument('--only-use-summaries', dest='onlyUseSummaries', action='store_true', default=False,
+                        help='specifies to query only summaries, and will not search the column store for any summaries not yet populated')
+
+    # Note: we are inverting this (negative) argument into args.createSummaries. Use of this argument will set createSummaries = False in the query.
+    parser.add_argument('--no-create-summaries', dest='createSummaries', action='store_false', default=True,
+                        help='specifies to not create summaries for this query')
     args = parser.parse_args()
 
     # Get the API token.
@@ -676,7 +682,9 @@ def commandTimeseriesQuery(parser):
         "startTime": args.start,
         "endTime": args.end,
         "buckets": args.buckets,
-        "priority": args.priority
+        "priority": args.priority,
+        "onlyUseSummaries": args.onlyUseSummaries,
+        "createSummaries": args.createSummaries
         }
 
     # Send the query to the server.
