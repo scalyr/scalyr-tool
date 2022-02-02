@@ -209,7 +209,6 @@ def commandGetFile(parser):
         "path": args.filepath,
     })
 
-
     # Print the file content.
     if response['status'] == 'success/noSuchFile':
         print_stderr('File "%s" does not exist' % (args.filepath))

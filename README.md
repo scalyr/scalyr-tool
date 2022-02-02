@@ -239,7 +239,7 @@ you may want to use the timeseries query command rather than `numeric-query`.
 
 The commands take the same options and return the same data, but for `timeseries-query` invocations without
 `--no-create-summaries` we create a timeseries on the backend for each unique filter/function pair.  
-This query will execute near-instantaneously, and avoid exhausting your query execution limit (see below).
+This query will execute near-instantaneously, and avoid consuming your account's query budget (see below).
 
 Here are some usage examples:
 
