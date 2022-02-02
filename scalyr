@@ -666,6 +666,8 @@ def commandTimeseriesQuery(parser):
                         help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
     parser.add_argument('--only-use-summaries', dest='onlyUseSummaries', action='store_true', default=False,
                         help='specifies to query only summaries, and will not search the column store for any summaries not yet populated')
+
+    # Note: we are inverting this (negative) argument into args.createSummaries. Use of this argument will set createSummaries = False in the query.
     parser.add_argument('--no-create-summaries', dest='createSummaries', action='store_false', default=True,
                         help='specifies to not create summaries for this query')
     args = parser.parse_args()

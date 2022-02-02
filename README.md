@@ -233,8 +233,8 @@ The "numeric-query" command allows you to retrieve numeric data, e.g. for graphi
 rate of events matching some criterion (e.g. error rate), or retrieve a numeric field (e.g. response
 size). 
 
-A numeric query is a special case of a [timeseries-query](#fetching-numeric-data-using-a-timeseries) with argument
-`--no-create-summaries`. If you will be invoking the same query repeatedly (e.g. in a script), 
+A numeric query is equivalent to a [timeseries-query](#fetching-numeric-data-using-a-timeseries) with argument
+`--no-create-summaries` and without `--only-use-summaries`. If you will be invoking the same query repeatedly (e.g. in a script), 
 you may want to use the timeseries query command rather than `numeric-query`.
 
 The commands take the same options and return the same data, but for `timeseries-query` invocations without
@@ -365,7 +365,7 @@ If you need a higher limit, drop us a line at support@scalyr.com.
 ## Fetching numeric data using a timeseries
 
 A timeseries precomputes a numeric query, allowing you to execute queries almost instantaneously, and without
-exhausting your query execution limit.  This is especially useful if you are using the Scalyr API to feed a
+consuming your account's query budget.  This is especially useful if you are using the Scalyr API to feed a
 home-built dashboard, alerting system, or other automated tool. Note that the [Scalyr API](https://www.scalyr.com/help/api#timeseriesQuery)
 allows multiple timeseries queries in a single API invocation, but the command-line tool only supports
 one query at a time.
@@ -377,15 +377,16 @@ earlier start time, we will extend the backfill to cover that as well.
 To change this behavior, use `--no-create-summaries`.
 
 A related argument, `--only-use-summaries`, controls whether this API call should only use preexisting timeseries or should
-actually execute the queries against the event database. If the argument is used, then your API call is guaranteed to return
-quickly and to execute inexpensively, but with possibly empty results. If set to false, the call  is slower
-& more expensive, but will be complete.
-Issuing a new query over the past 3 weeks with `--only-use-summaries` will return quickly
+execute the queries against the event database if no matching summary exists. If this argument is used, then your API call 
+is guaranteed to return quickly and to execute inexpensively, but with possibly empty results. If this argument is not used, 
+the call may be slower & more expensive, but will be complete.
+For example, issuing a new query over the past 3 weeks with `--only-use-summaries` will return quickly
 no matter what, but will initially return empty results until backfill (covering the past 3 weeks) is complete.
 This can be a cost-effective way to seed a new timeseries with a long backfill period when you don't need
 results right away.
 
-Issuing a timeseries command with `--no-create-summaries` is equivalent to a [numeric-query](#Fetching numeric data) command.
+Issuing a timeseries command with `--no-create-summaries` and without `--only-use-summaries` is equivalent to a
+[numeric-query](#Fetching numeric data) command.
 
 Usage is identical to the numeric-query command:
 
