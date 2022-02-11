@@ -652,7 +652,7 @@ def commandTimeseriesQuery(parser):
     parser.add_argument('filter', nargs=1, default='',
                         help='search term or filter expression')
     parser.add_argument('--function', default='',
-                        help='the value to compute from the events matching the filter, used only if --timeseries is not provided')
+                        help='the value to compute from the events matching the filter')
     parser.add_argument('--start', required=True,
                         help='beginning of the time range to query')
     parser.add_argument('--end', default='',

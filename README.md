@@ -397,10 +397,6 @@ Complete argument list:
     scalyr timeseries-query [filter] [--function xxx] --start xxx [options...]
         Just like numeric-query if `--no-create-summaries` is specified. Otherwise Scalyr will create a timeseries for
         you in the background.
-
-    scalyr timeseries-query --timeseries <timeseriesid> --start xxx [options...]
-        To query a timeseries created using create-timeseries 
-
     --start=xxx
         Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
         the log view. You must specify this argument.
@@ -408,7 +404,6 @@ Complete argument list:
         Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
         view. Defaults to the current time.
     --function=xxx
-        Only used if --timeseries is not provided.
         The value to compute from the matching events. You can use any function listed in
         https://www.scalyr.com/help/query-language#graphFunctions, except for fraction(expr). For
         example: 'mean(x)' or 'median(responseTime)', if x and responseTime are fields of your log.
