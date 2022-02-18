@@ -283,7 +283,7 @@ def commandQuery(parser):
                         help='end of the time range to query')
     parser.add_argument('--count', type=int, default=10,
                         help='how many log records to retrieve (1-5000)')
-    parser.add_argument('--mode', choices=['head', 'tail'], default='',
+    parser.add_argument('--mode', choices=['head', 'tail', ''], default='',
                         help='specifies whether to show logs from the beginning or end of the time range')
     parser.add_argument('--columns', default='',
                         help='comma-delimited list of columns to display; defaults to all')
