@@ -148,7 +148,7 @@ Complete argument list:
         Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
         the PowerQueries page. This field is required.
     --end=xxx
-        Specify the end of the time range to query. Uses the same syntax as the "End" field in the PowerQueries page. 
+        Specify the end of the time range to query. Uses the same syntax as the "End" field in the PowerQueries page.
         Defaults to 1 day after the start time if a start time is given.
     --output=csv|json|json-pretty
         How to display the log records (see below).
@@ -168,8 +168,8 @@ Complete argument list:
 
 #### Output formats
 
-By default, the power-query command outputs in 'csv' format, which emits one line per log record, in Excel 
-comma-separated-value format (with `CRLF` as the line separator, per the [spec](https://tools.ietf.org/html/rfc4180#page-2)). 
+By default, the power-query command outputs in 'csv' format, which emits one line per log record, in Excel
+comma-separated-value format (with `CRLF` as the line separator, per the [spec](https://tools.ietf.org/html/rfc4180#page-2)).
 
 The 'json' output option, not surprisingly, emits a JSON response.
 
@@ -231,10 +231,10 @@ If the clocks on the servers sending log messages to Scalyr are significantly ou
 
 The "numeric-query" command allows you to retrieve numeric data, e.g. for graphing. You can count the
 rate of events matching some criterion (e.g. error rate), or retrieve a numeric field (e.g. response
-size). 
+size).
 
 A numeric query is equivalent to a [timeseries-query](#fetching-numeric-data-using-a-timeseries) with argument
-`--no-create-summaries` and without `--only-use-summaries`. If you will be invoking the same query repeatedly (e.g. in a script), 
+`--no-create-summaries` and without `--only-use-summaries`. If you will be invoking the same query repeatedly (e.g. in a script),
 you may want to use the timeseries query command rather than `numeric-query`.
 
 The commands take the same options and return the same data, but for `timeseries-query` invocations without
@@ -377,8 +377,8 @@ earlier start time, we will extend the backfill to cover that as well.
 To change this behavior, use `--no-create-summaries`.
 
 A related argument, `--only-use-summaries`, controls whether this API call should only use preexisting timeseries or should
-execute the queries against the event database if no matching summary exists. If this argument is used, then your API call 
-is guaranteed to return quickly and to execute inexpensively, but with possibly empty results. If this argument is not used, 
+execute the queries against the event database if no matching summary exists. If this argument is used, then your API call
+is guaranteed to return quickly and to execute inexpensively, but with possibly empty results. If this argument is not used,
 the call may be slower & more expensive, but will be complete.
 For example, issuing a new query over the past 3 weeks with `--only-use-summaries` will return quickly
 no matter what, but will initially return empty results until backfill (covering the past 3 weeks) is complete.
@@ -426,9 +426,9 @@ Complete argument list:
         priority queries.
     --only-use-summaries
         Specifies to only query summaries, and not to search the column store for any summaries not yet populated.
-        No results will be returned unless the summaries queried have been backfilled. 
+        No results will be returned unless the summaries queried have been backfilled.
     --no-create-summaries
-        Specifies to not create summaries for this query. 
+        Specifies to not create summaries for this query.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
     --version
@@ -451,10 +451,10 @@ on the Scalyr web site which contains a full-page text editor, is editing a conf
 Using the get-file command is simple:
 
     # Display the alerts file
-    scalyr get-file /scalyr/alerts
+    scalyr get-file /alerts
 
     # Display the "Foo" dashboard
-    scalyr get-file /scalyr/dashboards/Foo
+    scalyr get-file /dashboards/Foo
 
 Complete argument list:
 
@@ -479,10 +479,10 @@ file content from stdin.
 Using the put-file command is simple:
 
     # Overwrite the alerts file
-    scalyr put-file /scalyr/alerts < alerts.json
+    scalyr put-file /alerts < alerts.json
 
     # Create or overwrite the "Foo" dashboard
-    scalyr put-file /scalyr/dashboards/Foo < fooDashboard.json
+    scalyr put-file /dashboards/Foo < fooDashboard.json
 
 Complete argument list:
 
@@ -505,7 +505,7 @@ The "delete-file" command allows you to delete a configuration file:
 Using the delete-file command is simple:
 
     # Delete the "Foo" dashboard
-    scalyr delete-file /scalyr/dashboards/Foo
+    scalyr delete-file /dashboards/Foo
 
 ## Listing configuration files
 
