@@ -8,6 +8,7 @@ Command-line tool for accessing Scalyr services. The following commands are curr
 - [**numeric-query**](#fetching-numeric-data): Retrieve numeric / graph data
 - [**facet-query**](#fetching-facet-counts): Retrieve common values for a field
 - [**timeseries-query**](#fetching-numeric-data-using-a-timeseries): Retrieve numeric / graph data from a timeseries
+- [**download-log**](#downloading-entire-log-files): Download the entire contents of a log file
 - [**get-file**](#retrieving-configuration-files): Fetch a configuration file
 - [**put-file**](#creating-or-updating-configuration-files): Create or update a configuration file
 - [**delete-file**](#creating-or-updating-configuration-files): Delete a configuration file
@@ -226,6 +227,56 @@ these limits.
 #### Server clocks
 
 If the clocks on the servers sending log messages to Scalyr are significantly out of sync then some messages may not appear in the live tail.  For example, if you send us a new log message with a timestamp old enough that it's not in the 1,000 most recent messages when it arrives at the Scalyr servers, then it will not be displayed by the live tail tool.
+
+## Downloading entire log files
+
+The "download-log" command allows you to download the entire contents, or a portion, of a log file from a given server host.
+
+The 'download-log' command is similar to the '[query](#querying-logs)' command, except it queries a specific log file from
+a specific server host, and it automatically handles continuation tokens so that the entire contents of the log are downloaded
+for the specified time range.
+
+**NOTE** this command is mostly intended to simplify retrieval of agent logs and profiling/debug information generated
+by the agent.  For bulk exports of log data, you are better off using the bulkExport tool: https://www.scalyr.com/bulkExports
+
+Here are some usage examples:
+
+    # Download the last 24 hours of the agent.log from prod-100
+    #   Note: the default logfile to download is agent.log
+    #   Also note the default query time range is the previous 24 hours
+    scalyr download-log --serverHost prod-100
+
+    # Download the last 4 hours of the agent.callgrind from prod-100
+    #   Note: if a non-absolute log file is specified, download-log assumes
+    #   the log file location is in /var/log/scalyr-agent-2/
+    scalyr download-log --serverHost prod-100 --logfile agent.callgrind --start 4h
+
+    # Download the last 4 hours of /var/log/nginx/access.log from prod-100
+    scalyr download-log --serverHost prod-100 --logfile /var/log/nginx/access.log --start 4h
+
+Complete argument list:
+
+    scalyr download-log [options...]
+
+    --serverHost <SERVERHOST>
+        the serverHost containing the log file that you wish
+        to download - cannot be empty
+
+    --logfile <LOGFILE>
+        the logfile on the serverHost that you want to download - defaults to `agent.log`.
+        If the logfile does not start with a `/` then the logfile is assumed to be
+        relative to /var/log/scalyr-agent-2
+
+    --start <START>
+        beginning of the time range to query. Uses same syntax as the '[query](#querying-logs)' command.
+
+    --end <END>
+        end of the time range to query. Uses same syntax as the '[query](#querying-logs)' command.
+
+    --delay <DELAY>
+        If multiple queries are needed to retrieve the full contents, the number of seconds to delay
+        between continuation queries. Defaults to 0.
+
 
 ## Fetching numeric data
 

@@ -271,6 +271,89 @@ def commandListFiles(parser):
     for i in range(len(paths)):
         print(paths[i])
 
+# Implement the "scalyr download-log" command
+def commandDownloadLog(parser):
+
+    # Parse the command-line arguments.
+    parser.add_argument('--serverHost', default='',
+                        help='the serverHost containing the log file that you wish to download - cannot be empty')
+    parser.add_argument('--logfile', default='agent.log',
+                        help='the logfile on the serverHost that you want to download - defaults to agent.log.  If the logfile does '
+                             'not start with a `/` then the logfile is assumed to be relative to /var/log/scalyr-agent-2')
+    parser.add_argument('--start', default='',
+                        help='beginning of the time range to query')
+    parser.add_argument('--end', default='',
+                        help='end of the time range to query')
+    parser.add_argument('--delay', type=int, default=0,
+                        help='The number of seconds to delay between continuations')
+
+    args = parser.parse_args()
+
+    server_host = args.serverHost
+    if server_host == '':
+        print_stderr('serverHost cannot be empty.  Please specify a serverHost with the --serverHost argument')
+        sys.exit(1)
+
+    log_file = args.logfile
+    if log_file == '':
+        print_stderr('logfile cannot be empty.  Please specify a logfile with the --logfile argument')
+        sys.exit(1)
+
+    if not log_file.startswith( '/' ):
+        log_file = '/var/log/scalyr-agent-2/' + log_file
+
+    # Get the API token.
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+
+    mode = 'head'
+    pageSize = 5000
+    start = args.start
+    end = args.end
+    priority = 'low'
+    output = 'multiline'
+
+    delay = args.delay
+
+    query = '$logfile = "%s" $serverHost = "%s"' % (log_file, server_host)
+
+    has_rows = True
+    continuation_token = None
+
+    while has_rows:
+        params = {
+          "token": apiToken,
+          "queryType": "log",
+          "filter": query,
+          "startTime": start,
+          "endTime": end,
+          "maxCount": pageSize,
+          "pageMode": mode,
+          "columns": 'message',
+          "priority": priority
+        }
+
+        if continuation_token is not None:
+            params['continuationToken'] = continuation_token
+
+        # Send the query to the server.
+        response, rawResponse = sendRequest(args, '/api/query', params )
+
+        # Print the log records.
+        matches = response['matches']
+
+        # Readable text format (singleline or multiline)
+        for i in range(len(matches)):
+            printReadableRow(output, matches[i])
+
+        continuation_token = None
+        if 'continuationToken' in response:
+            continuation_token = response['continuationToken']
+            time.sleep(delay)
+        else:
+            has_rows = False
+
+        if len( matches ) == 0:
+            has_rows = False
 
 # Implement the "scalyr query" command.
 def commandQuery(parser):
@@ -701,6 +784,7 @@ def scalyrToolCli():
     # All available commands
     all_commands = {
       'query': commandQuery,
+      'download-log': commandDownloadLog,
       'tail': commandTail,
       'numeric-query': commandNumericQuery,
       'facet-query': commandFacetQuery,
@@ -738,6 +822,7 @@ def scalyrToolCli():
     for arg in sys.argv[1:]:
         if arg in all_commands:
             command = arg
+            break
 
     # If we could not find a possible command, then just try to parse the commandline with the current options, which
     # we know will fail since there's no valid value for 'command'.
