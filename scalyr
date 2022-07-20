@@ -697,7 +697,7 @@ def commandTimeseriesQuery(parser):
     printNumericResults(response['results'][0]['values'], args.output, rawResponse, response)
 
 
-if __name__ == '__main__':
+def scalyrToolCli():
     # All available commands
     all_commands = {
       'query': commandQuery,
@@ -748,3 +748,6 @@ if __name__ == '__main__':
     # object oriented approach.
     command_func = all_commands[command]
     command_func(parser)
+
+if __name__ == '__main__':
+    scalyrToolCli()
