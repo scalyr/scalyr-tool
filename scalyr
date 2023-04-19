@@ -25,7 +25,7 @@ try:
     import StringIO
     from urlparse import urlparse
 
-    #if we are here then it's python 2 so set _unicode_type to unicode
+    # if we are here then it's python 2 so set _unicode_type to unicode
     _unicode_type = unicode
     _python2 = True
 
@@ -36,7 +36,6 @@ except ImportError:
     from urllib.parse import urlparse
 
 from collections import deque
-
 
 # Define some constants
 TOOL_VERSION = "0.4"
@@ -90,7 +89,8 @@ def parseProxyAddress(url):
 def print_stderr(message):
     sys.stderr.write(str(message) + '\n')
 
-def output_encoded( message ):
+
+def output_encoded(message):
     """Converts a string to ensure the output will be utf8 so that output can be safely redirected
     to a file without causing conversion errors.  This works differently in Python2 vs Python3
 
@@ -100,10 +100,11 @@ def output_encoded( message ):
         python3 strings to utf8 then the output will wrap all strings in b''
 
     """
-    if _python2 and type( message ) is _unicode_type:
-        return message.encode( 'utf-8' )
+    if _python2 and type(message) is _unicode_type:
+        return message.encode('utf-8')
 
     return message
+
 
 # Send a request to the server, and return the parsed JSON response.
 # args: Our parsed command-line arguments
@@ -176,7 +177,9 @@ def sendRequest(args, uri, parameterDict):
     responseBody = response.read().decode('utf8')
 
     if verbose or (response.status != 200):
-        print_stderr("After %s seconds, Scalyr server returned %s bytes; status %d / %s" % (int((datetime.datetime.now() - queryStartTime). total_seconds() * 1000) / 1000.0, len(responseBody), response.status, response.reason))
+        print_stderr("After %s seconds, Scalyr server returned %s bytes; status %d / %s" % (
+        int((datetime.datetime.now() - queryStartTime).total_seconds() * 1000) / 1000.0, len(responseBody),
+        response.status, response.reason))
 
     if response.status != 200:
         print_stderr('Response body: ' + responseBody)
@@ -216,19 +219,41 @@ def commandGetFile(parser):
         createDate = datetime.datetime.fromtimestamp(int(response['createDate']) / 1000)
         modDate = datetime.datetime.fromtimestamp(int(response['modDate']) / 1000)
 
-        print_stderr('Retrieved file "%s", version %d, created %s, modified %s, length %s' % (args.filepath, response['version'], createDate, modDate, len(response['content'])))
-        print( output_encoded( response['content'] ) )
+        print_stderr('Retrieved file "%s", version %d, created %s, modified %s, length %s' % (
+        args.filepath, response['version'], createDate, modDate, len(response['content'])))
+        print(output_encoded(response['content']))
 
 
 # Implement the "scalyr put-file" command.
 def commandPutFile(parser):
     # Parse the command-line arguments.
     parser.add_argument('filepath',
-                        help='server pathname of the file to retrieve, e.g. "/scalyr/alerts"')
+                        help='server pathname of the file to upload, e.g. "/scalyr/alerts"')
+    parser.add_argument('--validate',
+                        action='store_true',
+                        help='validate if input is a valid HOCON')
     args = parser.parse_args()
 
-    # Send the request to the server.
     content = sys.stdin.read()
+    if args.validate:
+
+        from importlib import import_module
+        # import required module
+        try:
+            module = import_module("pyhocon.converter")
+            parser = getattr(module, "ConfigFactory")
+        except ModuleNotFoundError:
+            print_stderr('"pyhocon" is needed for validation:'
+                         ' run "pip install pyhocon" to install')
+            sys.exit(1)
+        try:
+            parser.parse_string(content)
+        # broad exception clause to cover
+        # pyhocon and pyparsing exceptions
+        except Exception as err:
+            print_stderr('Input is invalid, error: %s' % err)
+            sys.exit(1)
+
     response, rawResponse = sendRequest(args, '/putFile', {
         "token": getApiToken(args, 'scalyr_writeconfig_token', 'Write Config'),
         "path": args.filepath,
@@ -287,7 +312,8 @@ def commandQuery(parser):
                         help='specifies whether to show logs from the beginning or end of the time range')
     parser.add_argument('--columns', default='',
                         help='comma-delimited list of columns to display; defaults to all')
-    parser.add_argument('--output', choices=['singleline', 'multiline', 'csv', 'json', 'json-pretty'], default='multiline',
+    parser.add_argument('--output', choices=['singleline', 'multiline', 'csv', 'json', 'json-pretty'],
+                        default='multiline',
                         help='specifies the format in which matching log messages are displayed')
     parser.add_argument('--priority', choices=['high', 'low'], default='high',
                         help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
@@ -306,15 +332,15 @@ def commandQuery(parser):
     apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
 
     params = {
-      "token": apiToken,
-      "queryType": "log",
-      "filter": args.filter,
-      "startTime": args.start,
-      "endTime": args.end,
-      "maxCount": args.count,
-      "pageMode": args.mode,
-      "columns": columns,
-      "priority": args.priority
+        "token": apiToken,
+        "queryType": "log",
+        "filter": args.filter,
+        "startTime": args.start,
+        "endTime": args.end,
+        "maxCount": args.count,
+        "pageMode": args.mode,
+        "columns": columns,
+        "priority": args.priority
     }
 
     if args.continuationToken:
@@ -327,9 +353,10 @@ def commandQuery(parser):
     matches = response['matches']
 
     if args.output == 'json':
-        print( output_encoded( rawResponse ) )
+        print(output_encoded(rawResponse))
     elif args.output == 'json-pretty':
-        print( output_encoded( json.dumps(response, ensure_ascii=args.no_escape_unicode, sort_keys=True, indent=2, separators=(',', ': ')) ) )
+        print(output_encoded(json.dumps(response, ensure_ascii=args.no_escape_unicode, sort_keys=True, indent=2,
+                                        separators=(',', ': '))))
     elif args.output == 'csv':
         columnList = columns.split(',')
 
@@ -346,9 +373,9 @@ def commandQuery(parser):
             for i in range(len(columnList)):
                 column = columnList[i]
                 if column in match:
-                    ar[i] = output_encoded( match.get(column))
+                    ar[i] = output_encoded(match.get(column))
                 elif column in attributes:
-                    ar[i] = output_encoded( attributes.get(column) )
+                    ar[i] = output_encoded(attributes.get(column))
                 else:
                     ar[i] = ''
             csvWriter.writerow(ar)
@@ -380,7 +407,7 @@ def printReadableRow(output, match):
 
     message = message.rstrip()
 
-    message = output_encoded( message )
+    message = output_encoded(message)
     attributes = match.get('attributes')
 
     if output == 'singleline':
@@ -412,7 +439,6 @@ def get_match_unique_id(match):
 
 
 def liveTail(apiToken, args):
-
     maximum_tail_time = 10 * 60
     readback_limit = 10 * 60  # 10 minutes
     max_matches = 1000
@@ -474,7 +500,8 @@ def liveTail(apiToken, args):
 
         current_time = time.time()
         first = False
-    print_stderr("----\nTo minimize server load, live tail expires after 10 minutes. If this is bothersome, please let us know at support@scalyr.com.\n")
+    print_stderr(
+        "----\nTo minimize server load, live tail expires after 10 minutes. If this is bothersome, please let us know at support@scalyr.com.\n")
 
 
 # Implement the 'scalyr tail' command
@@ -537,9 +564,10 @@ def commandNumericQuery(parser):
 # Print the output of a facet-query command.
 def printFacetResults(matchCount, values, outputFormat, rawResponse, response, ensure_ascii=True):
     if outputFormat == 'json':
-        print( output_encoded( rawResponse ) )
+        print(output_encoded(rawResponse))
     elif outputFormat == 'json-pretty':
-        print( output_encoded( json.dumps(response, ensure_ascii=ensure_ascii, sort_keys=True, indent=2, separators=(',', ': ') ) ))
+        print(output_encoded(
+            json.dumps(response, ensure_ascii=ensure_ascii, sort_keys=True, indent=2, separators=(',', ': '))))
     else:
         # csv
         csvBuffer = StringIO.StringIO()
@@ -585,20 +613,23 @@ def commandFacetQuery(parser):
         "priority": args.priority
     })
 
-    printFacetResults(response['matchCount'], response['values'], args.output, rawResponse, response, ensure_ascii=args.no_escape_unicode)
+    printFacetResults(response['matchCount'], response['values'], args.output, rawResponse, response,
+                      ensure_ascii=args.no_escape_unicode)
+
 
 # Print the output of a power-query command.
 def printPowerResults(outputFormat, rawResponse, response, ensure_ascii=True):
     matchingEvents, omittedEvents = response['matchingEvents'], response['omittedEvents']
-    columns, values, warnings     = response['columns'], response['values'], response['warnings']
+    columns, values, warnings = response['columns'], response['values'], response['warnings']
 
     def col_name(col):
         return col.get('name')
 
     if outputFormat == 'json':
-        print( output_encoded( rawResponse ) )
+        print(output_encoded(rawResponse))
     elif outputFormat == 'json-pretty':
-        print( output_encoded( json.dumps(response, ensure_ascii=ensure_ascii, sort_keys=True, indent=2, separators=(',', ': ') ) ))
+        print(output_encoded(
+            json.dumps(response, ensure_ascii=ensure_ascii, sort_keys=True, indent=2, separators=(',', ': '))))
     else:
         # csv
         csvBuffer = StringIO.StringIO()
@@ -607,7 +638,8 @@ def printPowerResults(outputFormat, rawResponse, response, ensure_ascii=True):
         if (len(warnings) > 0):
             csvWriter.writerow(warnings)
         if (omittedEvents > 0):
-            csvWriter.writerow(["%d of %d events (%.1f%%) were omitted due to memory limits" % (omittedEvents, matchingEvents, (omittedEvents*100) / matchingEvents)])
+            csvWriter.writerow(["%d of %d events (%.1f%%) were omitted due to memory limits" % (
+            omittedEvents, matchingEvents, (omittedEvents * 100) / matchingEvents)])
 
         csvWriter.writerow(map(output_encoded, map(col_name, columns)))
         for i in range(len(values)):
@@ -674,7 +706,7 @@ def commandTimeseriesQuery(parser):
     # Get the API token.
     apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
 
-		# build the query
+    # build the query
     query = {
         "queryType": "numeric",
         "filter": args.filter[0],
@@ -685,12 +717,12 @@ def commandTimeseriesQuery(parser):
         "priority": args.priority,
         "onlyUseSummaries": args.onlyUseSummaries,
         "createSummaries": args.createSummaries
-        }
+    }
 
     # Send the query to the server.
     response, rawResponse = sendRequest(args, '/api/timeseriesQuery', {
         "token": apiToken,
-        "queries": [ query ]
+        "queries": [query]
     })
 
     # Print the results.
@@ -700,21 +732,22 @@ def commandTimeseriesQuery(parser):
 def scalyrToolCli():
     # All available commands
     all_commands = {
-      'query': commandQuery,
-      'tail': commandTail,
-      'numeric-query': commandNumericQuery,
-      'facet-query': commandFacetQuery,
-      'power-query': commandPowerQuery,
-      'timeseries-query': commandTimeseriesQuery,
-      'timerseries-query': commandTimeseriesQuery,  # mispelling; kept for backwards compatibility
-      'get-file': commandGetFile,
-      'put-file': commandPutFile,
-      'delete-file': commandDeleteFile,
-      'list-files': commandListFiles,
+        'query': commandQuery,
+        'tail': commandTail,
+        'numeric-query': commandNumericQuery,
+        'facet-query': commandFacetQuery,
+        'power-query': commandPowerQuery,
+        'timeseries-query': commandTimeseriesQuery,
+        'timerseries-query': commandTimeseriesQuery,  # mispelling; kept for backwards compatibility
+        'get-file': commandGetFile,
+        'put-file': commandPutFile,
+        'delete-file': commandDeleteFile,
+        'list-files': commandListFiles,
     }
 
     # Define arguments that are the same for all commands
-    parser = argparse.ArgumentParser(description='Scalyr command-line tool. See https://github.com/scalyr/scalyr-tool for documentation.')
+    parser = argparse.ArgumentParser(
+        description='Scalyr command-line tool. See https://github.com/scalyr/scalyr-tool for documentation.')
     parser.add_argument('command', choices=all_commands.keys(),
                         help='specifies the action to be performed')
     parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
@@ -748,6 +781,7 @@ def scalyrToolCli():
     # object oriented approach.
     command_func = all_commands[command]
     command_func(parser)
+
 
 if __name__ == '__main__':
     scalyrToolCli()

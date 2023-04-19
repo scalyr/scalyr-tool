@@ -497,6 +497,9 @@ Complete argument list:
     --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
+    --validate
+        Validate if input is a valid HOCON. Validation relies on pyhocon parser
+        (see https://github.com/chimpler/pyhocon).
 
 ## Deleting configuration files
 
