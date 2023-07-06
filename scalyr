@@ -460,6 +460,11 @@ def liveTail(apiToken, args):
     while current_time - start_time < maximum_tail_time:
 
         # Send the query to the server.
+        columns = args.columns
+        if columns.find("sessions") == -1:
+            columns += ",session"
+        if columns.find("timestamp") == -1:
+            columns += ",timestamp"
         response, rawResponse = sendRequest(args, '/api/query', {
             "token": apiToken,
             "queryType": "log",
@@ -468,7 +473,7 @@ def liveTail(apiToken, args):
             "endTime": int(current_time),
             "maxCount": max_matches,
             "pageMode": "tail",
-            "columns": '',
+            "columns": columns,
             "priority": "low"
         })
 
@@ -513,6 +518,8 @@ def commandTail(parser):
                         help='specifies the format in which matching log messages are displayed')
     parser.add_argument('--lines', '-n', type=int, default=10,
                         help='Output the previous \'n\' lines at the start of the tail')
+    parser.add_argument('--columns', default='',
+                        help='comma-delimited list of columns to display; defaults to all')
 
     # Get the API token
     args = parser.parse_args()
