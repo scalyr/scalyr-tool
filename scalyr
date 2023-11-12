@@ -95,7 +95,7 @@ def parseProxyAddress(url):
 
 # Print a string to stderr.
 def print_stderr(message):
-    sys.stderr.write(str(message) + "\n")
+    print(message, file=sys.stderr)
 
 
 def output_encoded(message):
