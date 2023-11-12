@@ -48,14 +48,10 @@ def getApiToken(args, environmentVariableName, permissionType):
         apiToken = os.getenv(environmentVariableName, "")
     if apiToken == "":
         print_stderr(
-            "Please specify an API token granting "
-            + permissionType
-            + " permission. You can place it in the"
+            f"Please specify an API token granting {permissionType} permission. You can place it in the"
         )
         print_stderr(
-            'command line as --token "XXX", or in the environment variable "'
-            + environmentVariableName
-            + '".'
+            f'command line as --token "XXX", or in the environment variable "{environmentVariableName}".'
         )
         print_stderr(
             "Use of an environment variable is recommended, to avoid displaying your API token in the"
@@ -208,7 +204,7 @@ def sendRequest(args, uri, parameterDict):
         )
 
     if response.status != 200:
-        print_stderr("Response body: " + responseBody)
+        print_stderr(f"Response body: {responseBody}")
         sys.exit(1)
 
     try:
