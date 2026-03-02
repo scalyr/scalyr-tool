@@ -93,13 +93,14 @@ def parse_timestamp(value):
 
     # Try to parse day names (Monday, Tuesday, etc.)
     if parsed_dt is None:
-        day_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        day_names = ['monday' , 'tuesday' , 'wednesday' , 'thursday' , 'friday' , 'saturday' , 'sunday' ,
+                     'mon'    , 'tue'     , 'wed'       , 'thu'      , 'fri'    , 'sat'      , 'sun'    ,
+                     'mon'    , 'tues'    , 'weds'      , 'thurs'    , 'fri'    , 'sat'      , 'sun' ]
         if value.lower() in day_names:
             target_day = day_names.index(value.lower())
             current_day = now.weekday()
             days_ago = (current_day - target_day) % 7
-            if days_ago == 0:
-                days_ago = 7  # If today is that day, go back a week
+            # adjust to last week if given day is in the future relative to today
             parsed_dt = (now - datetime.timedelta(days=days_ago)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
