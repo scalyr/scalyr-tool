@@ -40,6 +40,120 @@ from collections import deque
 # Define some constants
 TOOL_VERSION = "0.4"
 
+# Regular expression for detecting relative time strings
+import re
+_RELATIVE_TIME_PATTERN = re.compile(r'^-?\d+[smhdwMy]$')
+
+
+def parse_timestamp(value):
+    """Parse a timestamp string and convert absolute/semi-absolute times to ISO8601 with timezone.
+
+    - Relative times (e.g., "4h", "-1w", "1d") are passed through unchanged.
+    - Absolute times (e.g., "3/1/26", "2026-03-01") are converted to ISO8601 with local timezone.
+    - Semi-absolute times (e.g., "12pm", "Monday") are interpreted as the most recent
+      occurrence in the user's timezone and converted to ISO8601.
+
+    Returns the original string for relative times, or an ISO8601 formatted string with timezone.
+    """
+    if not value:
+        return value
+
+    value = value.strip()
+
+    # Check for relative time patterns: optional minus, digits, then a time unit letter
+    # Examples: 4h, -1w, 30m, 1d, 2M (months), 1y
+    if _RELATIVE_TIME_PATTERN.match(value):
+        return value
+
+    now = datetime.datetime.now()
+    parsed_dt = None
+    is_time_only = False
+
+    # Try to parse semi-absolute times first (time of day like "12pm", "3:30pm")
+    time_formats = [
+        '%I%p',      # 12PM, 3AM
+        '%I:%M%p',   # 12:30PM, 3:45AM
+        '%H:%M',     # 14:30 (24-hour)
+    ]
+
+    for fmt in time_formats:
+        try:
+            parsed_time = datetime.datetime.strptime(value.upper(), fmt)
+            # Combine with today's date
+            parsed_dt = now.replace(
+                hour=parsed_time.hour,
+                minute=parsed_time.minute,
+                second=0,
+                microsecond=0
+            )
+            is_time_only = True
+            break
+        except ValueError:
+            continue
+
+    # Try to parse day names (Monday, Tuesday, etc.)
+    if parsed_dt is None:
+        day_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        if value.lower() in day_names:
+            target_day = day_names.index(value.lower())
+            current_day = now.weekday()
+            days_ago = (current_day - target_day) % 7
+            if days_ago == 0:
+                days_ago = 7  # If today is that day, go back a week
+            parsed_dt = (now - datetime.timedelta(days=days_ago)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+
+    # Try to parse absolute date formats
+    if parsed_dt is None:
+        date_formats = [
+            '%m/%d/%y',          # 3/1/26
+            '%m/%d/%Y',          # 3/1/2026
+            '%Y-%m-%d',          # 2026-03-01
+            '%m/%d/%y %H:%M',    # 3/1/26 14:00
+            '%m/%d/%Y %H:%M',    # 3/1/2026 14:00
+            '%Y-%m-%d %H:%M',    # 2026-03-01 14:00
+            '%m/%d/%y %I:%M%p',  # 3/1/26 2:00PM
+            '%m/%d/%Y %I:%M%p',  # 3/1/2026 2:00PM
+            '%Y-%m-%d %I:%M%p',  # 2026-03-01 2:00PM
+            '%m-%d-%y',          # 03-01-26
+            '%m-%d-%Y',          # 03-01-2026
+        ]
+
+        for fmt in date_formats:
+            try:
+                parsed_dt = datetime.datetime.strptime(value.upper(), fmt)
+                break
+            except ValueError:
+                continue
+
+    # If we successfully parsed a datetime, format it as ISO8601 with timezone
+    if parsed_dt is not None:
+        # For time-only values, if the result is in the future, use yesterday
+        if is_time_only and parsed_dt > now:
+            parsed_dt = parsed_dt - datetime.timedelta(days=1)
+
+        # Get the local timezone offset for the parsed datetime
+        if time.daylight and time.localtime(time.mktime(parsed_dt.timetuple())).tm_isdst:
+            tz_offset_seconds = -time.altzone
+        else:
+            tz_offset_seconds = -time.timezone
+
+        tz_hours = abs(tz_offset_seconds) // 3600
+        tz_minutes = (abs(tz_offset_seconds) % 3600) // 60
+        tz_sign = '+' if tz_offset_seconds >= 0 else '-'
+
+        # Format as ISO8601 with timezone: 2026-03-01T12:00:00-0800
+        return '%s%s%02d%02d' % (
+            parsed_dt.strftime('%Y-%m-%dT%H:%M:%S'),
+            tz_sign,
+            tz_hours,
+            tz_minutes
+        )
+
+    # If we couldn't parse it, return unchanged (server will handle it or error)
+    return value
+
 
 # Return the API token from the command line or environment variables.
 def getApiToken(args, environmentVariableName, permissionType):
@@ -115,7 +229,8 @@ def sendRequest(args, uri, parameterDict):
 
     queryStartTime = datetime.datetime.now()
 
-    verbose = args.verbose
+    # Dryrun mode implies verbose
+    verbose = args.verbose or args.dryrun
     if verbose:
         print_stderr("Using arguments: %s" % args)
 
@@ -169,6 +284,10 @@ def sendRequest(args, uri, parameterDict):
             print_stderr("  %s: %s" % (i, headers[i]))
         print_stderr("Request body:")
         print_stderr(json.dumps(json.loads(parameterJson), sort_keys=True, indent=2, separators=(',', ': ')))
+
+    # In dryrun mode, exit after printing the request body
+    if args.dryrun:
+        sys.exit(0)
 
     conn.request("POST", uri, parameterJson, headers)
 
@@ -335,8 +454,8 @@ def commandQuery(parser):
         "token": apiToken,
         "queryType": "log",
         "filter": args.filter,
-        "startTime": args.start,
-        "endTime": args.end,
+        "startTime": parse_timestamp(args.start),
+        "endTime": parse_timestamp(args.end),
         "maxCount": args.count,
         "pageMode": args.mode,
         "columns": columns,
@@ -552,8 +671,8 @@ def commandNumericQuery(parser):
         "queryType": "numeric",
         "filter": args.filter[0],
         "function": args.function,
-        "startTime": args.start,
-        "endTime": args.end,
+        "startTime": parse_timestamp(args.start),
+        "endTime": parse_timestamp(args.end),
         "buckets": args.buckets,
         "priority": args.priority
     })
@@ -608,8 +727,8 @@ def commandFacetQuery(parser):
         "filter": args.filter[0],
         "field": args.field[0],
         "maxCount": args.count,
-        "startTime": args.start,
-        "endTime": args.end,
+        "startTime": parse_timestamp(args.start),
+        "endTime": parse_timestamp(args.end),
         "priority": args.priority
     })
 
@@ -670,8 +789,8 @@ def commandPowerQuery(parser):
         "token": apiToken,
         "queryType": "complex",
         "query": args.filter[0],
-        "startTime": args.start,
-        "endTime": args.end,
+        "startTime": parse_timestamp(args.start),
+        "endTime": parse_timestamp(args.end),
         "priority": args.priority
     })
 
@@ -711,8 +830,8 @@ def commandTimeseriesQuery(parser):
         "queryType": "numeric",
         "filter": args.filter[0],
         "function": args.function,
-        "startTime": args.start,
-        "endTime": args.end,
+        "startTime": parse_timestamp(args.start),
+        "endTime": parse_timestamp(args.end),
         "buckets": args.buckets,
         "priority": args.priority,
         "onlyUseSummaries": args.onlyUseSummaries,
@@ -757,6 +876,8 @@ def scalyrToolCli():
                         help='API access token')
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='enables additional diagnostic output')
+    parser.add_argument('--dryrun', action='store_true', default=False,
+                        help='enables verbose mode but does not contact the server')
 
     parser.add_argument('--no-escape-unicode', action="store_false",
                         help='When true, the json-pretty output format will show unicode characters rather than escaped unicode characters (the default for json-pretty is to use escaped characters)')
