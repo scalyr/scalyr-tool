@@ -40,190 +40,31 @@ from collections import deque
 # Define some constants
 TOOL_VERSION = "0.4"
 
-# Day name mappings for timestamp parsing
-_DAY_NAMES = {
+
+# Constants used by date/time parsing for TZ decoration
+DAY_NAMES = {
     'monday': 0, 'mon': 0,
     'tuesday': 1, 'tue': 1, 'tues': 1,
-    'wednesday': 2, 'wed': 2, 'weds': 2,
+    'wednesday': 2, 'wed': 2,
     'thursday': 3, 'thu': 3, 'thur': 3, 'thurs': 3,
     'friday': 4, 'fri': 4,
     'saturday': 5, 'sat': 5,
-    'sunday': 6, 'sun': 6
+    'sunday': 6, 'sun': 6,
 }
-
-
-def _is_relative_time(s):
-    """Check if string is a relative time like '4h', '-1w', '30m'."""
-    if not s:
-        return False
-    s = s.strip()
-    # Handle optional leading minus
-    if s.startswith('-'):
-        s = s[1:]
-    if not s:
-        return False
-    # Must end with a time unit letter
-    if s[-1].lower() not in 'smhdw':
-        return False
-    # Everything before must be digits
-    return s[:-1].isdigit() and len(s[:-1]) > 0
-
-
-def _parse_time_component(s):
-    """Parse a time like '9am', '12pm', '10:30am'. Returns (hour, minute, True) or (None, None, False)."""
-    s = s.lower().strip()
-    for suffix, is_pm in [('am', False), ('pm', True)]:
-        if s.endswith(suffix):
-            time_part = s[:-len(suffix)]
-            if ':' in time_part:
-                parts = time_part.split(':')
-                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                    hour, minute = int(parts[0]), int(parts[1])
-                else:
-                    continue
-            elif time_part.isdigit():
-                hour, minute = int(time_part), 0
-            else:
-                continue
-            if is_pm and hour != 12:
-                hour += 12
-            elif not is_pm and hour == 12:
-                hour = 0
-            return (hour, minute, True)
-    return (None, None, False)
-
-
-def _parse_date_component(s):
-    """Parse a date like '3/1/26', '3/10/2026'. Returns (year, month, day, True) or (None, None, None, False)."""
-    parts = s.split('/')
-    if len(parts) == 3:
-        try:
-            month = int(parts[0])
-            day = int(parts[1])
-            year = int(parts[2])
-            if year < 100:
-                year += 2000
-            return (year, month, day, True)
-        except ValueError:
-            pass
-    return (None, None, None, False)
-
-
-def _get_local_tz_offset(dt):
-    """Get the local timezone offset for a given datetime, accounting for DST."""
-    # Get the timestamp for the given datetime
-    timestamp = time.mktime(dt.timetuple())
-    # Get local time and UTC time for that timestamp
-    local_time = datetime.datetime.fromtimestamp(timestamp)
-    utc_time = datetime.datetime.utcfromtimestamp(timestamp)
-    # Calculate offset in seconds
-    offset_seconds = (local_time - utc_time).total_seconds()
-    return int(offset_seconds)
-
-
-def _format_iso8601(dt, offset_seconds):
-    """Format a datetime as ISO8601 with timezone offset."""
-    sign = '+' if offset_seconds >= 0 else '-'
-    abs_offset = abs(offset_seconds)
-    hours = int(abs_offset // 3600)
-    minutes = int((abs_offset % 3600) // 60)
-    offset_str = '%s%02d%02d' % (sign, hours, minutes)
-    return dt.strftime('%Y-%m-%dT%H:%M:%S') + offset_str
-
-
-def _find_most_recent_day_time(now, target_weekday, hour, minute=0):
-    """Find the most recent occurrence of a specific day and hour."""
-    current_weekday = now.weekday()
-    days_back = (current_weekday - target_weekday) % 7
-
-    candidate = datetime.datetime(now.year, now.month, now.day, hour, minute, 0) - datetime.timedelta(days=days_back)
-
-    # If the candidate is in the future, go back a week
-    if candidate > now:
-        candidate -= datetime.timedelta(days=7)
-
-    return candidate
-
-
-def _find_most_recent_time(now, hour, minute=0):
-    """Find the most recent occurrence of a specific hour and minute."""
-    candidate = datetime.datetime(now.year, now.month, now.day, hour, minute, 0)
-
-    # If the candidate is in the future, go back a day
-    if candidate > now:
-        candidate -= datetime.timedelta(days=1)
-
-    return candidate
-
-
-def parse_timestamp(timestamp_str):
-    """Parse a timestamp string and convert it to ISO8601 format with timezone if it's absolute.
-    Relative timestamps (e.g., '4h', '-1w') are passed through unchanged.
-    Absolute timestamps are interpreted in the user's local timezone.
-    """
-    if not timestamp_str:
-        return timestamp_str
-
-    timestamp_str = timestamp_str.strip()
-
-    # Check if it's a relative time
-    if _is_relative_time(timestamp_str):
-        return timestamp_str
-
-    now = datetime.datetime.now()
-    parsed_dt = None
-    s_lower = timestamp_str.lower()
-
-    # Split by whitespace to check for compound formats like "Monday 9am" or "9am Mon"
-    parts = s_lower.split()
-
-    if len(parts) == 2:
-        # Could be "Monday 9am" or "9am Mon"
-        day_name = None
-        hour = None
-
-        # Check first part for day name
-        if parts[0] in _DAY_NAMES:
-            day_name = parts[0]
-            hour, minute, ok = _parse_time_component(parts[1])
-            if not ok:
-                hour = None
-        # Check second part for day name
-        elif parts[1] in _DAY_NAMES:
-            day_name = parts[1]
-            hour, minute, ok = _parse_time_component(parts[0])
-            if not ok:
-                hour = None
-
-        if day_name is not None and hour is not None:
-            target_weekday = _DAY_NAMES[day_name]
-            parsed_dt = _find_most_recent_day_time(now, target_weekday, hour, minute)
-
-    elif len(parts) == 1:
-        # Single token: could be day name, time, or date
-
-        # Check for day name only
-        if s_lower in _DAY_NAMES:
-            target_weekday = _DAY_NAMES[s_lower]
-            parsed_dt = _find_most_recent_day_time(now, target_weekday, 0)
-        else:
-            # Check for time only (e.g., "9am", "12pm", "10:30am")
-            hour, minute, ok = _parse_time_component(s_lower)
-            if ok:
-                parsed_dt = _find_most_recent_time(now, hour, minute)
-            else:
-                # Check for date (e.g., "3/1/26")
-                year, month, day, ok = _parse_date_component(timestamp_str)
-                if ok:
-                    parsed_dt = datetime.datetime(year, month, day, 0, 0, 0)
-
-    if parsed_dt is not None:
-        # Get the timezone offset for the parsed datetime (handles DST)
-        local_tz_offset = _get_local_tz_offset(parsed_dt)
-        return _format_iso8601(parsed_dt, local_tz_offset)
-
-    # If we couldn't parse it, return as-is (let the server handle it)
-    return timestamp_str
+MONTH_NAMES = {
+    'jan': 1, 'january': 1,
+    'feb': 2, 'february': 2,
+    'mar': 3, 'march': 3,
+    'apr': 4, 'april': 4,
+    'may': 5,
+    'jun': 6, 'june': 6,
+    'jul': 7, 'july': 7,
+    'aug': 8, 'august': 8,
+    'sep': 9, 'sept': 9, 'september': 9,
+    'oct': 10, 'october': 10,
+    'nov': 11, 'november': 11,
+    'dec': 12, 'december': 12,
+}
 
 
 # Return the API token from the command line or environment variables.
@@ -300,8 +141,10 @@ def sendRequest(args, uri, parameterDict):
 
     queryStartTime = datetime.datetime.now()
 
-    # dryrun implies verbose
-    verbose = args.verbose or args.dryrun
+    verbose = args.verbose
+    dryrun = getattr(args, 'dryrun', False)
+    if dryrun:
+        verbose = True
     if verbose:
         print_stderr("Using arguments: %s" % args)
 
@@ -356,8 +199,7 @@ def sendRequest(args, uri, parameterDict):
         print_stderr("Request body:")
         print_stderr(json.dumps(json.loads(parameterJson), sort_keys=True, indent=2, separators=(',', ': ')))
 
-    # In dryrun mode, exit without contacting the server
-    if args.dryrun:
+    if dryrun:
         sys.exit(0)
 
     conn.request("POST", uri, parameterJson, headers)
@@ -511,6 +353,7 @@ def commandQuery(parser):
                         help='specifies the continuation token to use from a previous request')
 
     args = parser.parse_args()
+    rewrite_timestamps(args)
 
     columns = args.columns
     output = args.output
@@ -525,8 +368,8 @@ def commandQuery(parser):
         "token": apiToken,
         "queryType": "log",
         "filter": args.filter,
-        "startTime": parse_timestamp(args.start),
-        "endTime": parse_timestamp(args.end),
+        "startTime": args.start,
+        "endTime": args.end,
         "maxCount": args.count,
         "pageMode": args.mode,
         "columns": columns,
@@ -732,6 +575,7 @@ def commandNumericQuery(parser):
     parser.add_argument('--priority', choices=['high', 'low'], default='high',
                         help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
     args = parser.parse_args()
+    rewrite_timestamps(args)
 
     # Get the API token.
     apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
@@ -742,8 +586,8 @@ def commandNumericQuery(parser):
         "queryType": "numeric",
         "filter": args.filter[0],
         "function": args.function,
-        "startTime": parse_timestamp(args.start),
-        "endTime": parse_timestamp(args.end),
+        "startTime": args.start,
+        "endTime": args.end,
         "buckets": args.buckets,
         "priority": args.priority
     })
@@ -787,6 +631,7 @@ def commandFacetQuery(parser):
     parser.add_argument('--priority', choices=['high', 'low'], default='high',
                         help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
     args = parser.parse_args()
+    rewrite_timestamps(args)
 
     # Get the API token.
     apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
@@ -798,8 +643,8 @@ def commandFacetQuery(parser):
         "filter": args.filter[0],
         "field": args.field[0],
         "maxCount": args.count,
-        "startTime": parse_timestamp(args.start),
-        "endTime": parse_timestamp(args.end),
+        "startTime": args.start,
+        "endTime": args.end,
         "priority": args.priority
     })
 
@@ -851,6 +696,7 @@ def commandPowerQuery(parser):
     parser.add_argument('--priority', choices=['high', 'low'], default='high',
                         help='specifies the execution priority for this query. Use low for scripted operations where a delay of a second or so is acceptable.')
     args = parser.parse_args()
+    rewrite_timestamps(args)
 
     # Get the API token.
     apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
@@ -860,8 +706,8 @@ def commandPowerQuery(parser):
         "token": apiToken,
         "queryType": "complex",
         "query": args.filter[0],
-        "startTime": parse_timestamp(args.start),
-        "endTime": parse_timestamp(args.end),
+        "startTime": args.start,
+        "endTime": args.end,
         "priority": args.priority
     })
 
@@ -892,6 +738,7 @@ def commandTimeseriesQuery(parser):
     parser.add_argument('--no-create-summaries', dest='createSummaries', action='store_false', default=True,
                         help='specifies to not create summaries for this query')
     args = parser.parse_args()
+    rewrite_timestamps(args)
 
     # Get the API token.
     apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
@@ -901,8 +748,8 @@ def commandTimeseriesQuery(parser):
         "queryType": "numeric",
         "filter": args.filter[0],
         "function": args.function,
-        "startTime": parse_timestamp(args.start),
-        "endTime": parse_timestamp(args.end),
+        "startTime": args.start,
+        "endTime": args.end,
         "buckets": args.buckets,
         "priority": args.priority,
         "onlyUseSummaries": args.onlyUseSummaries,
@@ -948,7 +795,7 @@ def scalyrToolCli():
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='enables additional diagnostic output')
     parser.add_argument('--dryrun', action='store_true', default=False,
-                        help='enables verbose mode and exits after printing the request body without contacting the server')
+                        help='enables verbose mode but does not contact the server')
 
     parser.add_argument('--no-escape-unicode', action="store_false",
                         help='When true, the json-pretty output format will show unicode characters rather than escaped unicode characters (the default for json-pretty is to use escaped characters)')
@@ -973,6 +820,227 @@ def scalyrToolCli():
     # object oriented approach.
     command_func = all_commands[command]
     command_func(parser)
+
+def is_relative_duration(s):
+    """Check if a string is a relative duration like '4h', '1d', '-2h'."""
+    s = s.strip()
+    if s.startswith('-'):
+        s = s[1:]
+    if len(s) < 2:
+        return False
+    if s[-1] not in 'smhdw':
+        return False
+    return s[:-1].isdigit()
+
+
+def parse_time_component(s):
+    """Parse a time string like '9am', '12pm', '1:30pm', '14:00' into (hour, minute).
+    Returns None if the string cannot be parsed as a time.
+    Bare numbers without am/pm or colon are NOT treated as times."""
+    s = s.strip().lower()
+    ampm = None
+    if s.endswith('am'):
+        ampm = 'am'
+        s = s[:-2].strip()
+    elif s.endswith('pm'):
+        ampm = 'pm'
+        s = s[:-2].strip()
+
+    if ':' in s:
+        parts = s.split(':')
+        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+            hour, minute = int(parts[0]), int(parts[1])
+        else:
+            return None
+    elif s.isdigit() and ampm is not None:
+        hour = int(s)
+        minute = 0
+    else:
+        return None
+
+    if ampm == 'am':
+        if hour == 12:
+            hour = 0
+    elif ampm == 'pm':
+        if hour != 12:
+            hour += 12
+
+    return (hour, minute)
+
+
+def get_local_utc_offset(dt):
+    """Get the UTC offset in seconds for a given naive local datetime, accounting for DST."""
+    ts = time.mktime(dt.timetuple())
+    lt = time.localtime(ts)
+    if lt.tm_isdst and time.daylight:
+        return -time.altzone
+    else:
+        return -time.timezone
+
+
+def format_iso8601_with_offset(dt):
+    """Format a naive local datetime as ISO8601 with the local UTC offset."""
+    offset_seconds = get_local_utc_offset(dt)
+    offset_hours = abs(offset_seconds) // 3600
+    offset_minutes = (abs(offset_seconds) % 3600) // 60
+    sign = '+' if offset_seconds >= 0 else '-'
+    return dt.strftime('%Y-%m-%dT%H:%M:%S') + '%s%02d%02d' % (sign, offset_hours, offset_minutes)
+
+
+
+# rewrwite_timestamp
+#
+# For these examples, assume the user is in Pacific Standard Time (UTC-8) and the current time is 11am on Monday March 2, 2026.
+#
+# | User input | Desired rewritten string | Notes                                                               |
+# | ---------- | ------------------------ | ------------------------------------------------------------------- |
+# | 4h         | 4h                       | no change                                                           |
+# | 1d         | 1d                       | no change                                                           |
+# | 9am        | 2026-03-02T09:00:00-0800 | the most recent 9am in the user's timezone = today                  |
+# | Monday 9am | 2026-03-02T09:00:00-0800 | the most recent 9am on a Monday in the user's timezone = today      |
+# | 9am Mon    | 2026-03-02T09:00:00-0800 | the most recent 9am on a Monday in the user's timezone = today      |
+# | 12pm       | 2026-03-01T12:00:00-0800 | the most recent noon in the user's timezone = yesterday             |
+# | Mon 12pm   | 2026-02-23T12:00:00-0800 | the most recent noon on a Monday in the user's timezone = last week |
+# | Monday     | 2026-03-02T00:00:00-0800 | the most recent local midnight on a Monday = today                  |
+# | Mon        | 2026-03-02T00:00:00-0800 | the most recent local midnight on a Monday = today                  |
+# | Tuesday    | 2026-02-24T00:00:00-0800 | he most recent local midnight on a Tuesday = last week              |
+# | 3/1/26     | 2026-03-01T00:00:00-0800 | midnight on Sunday March 1st in the user's timezone                 |
+# | 3/1/26 1am | 2026-03-01T01:00:00-0800 | midnight on Sunday March 1st in the user's timezone                 |
+# | 3/1/26 1pm | 2026-03-01T13:00:00-0800 | midnight on Sunday March 1st in the user's timezone                 |
+# | 7/1/25     | 2025-07-01T00:00:00-0700 | midnight on July 1st - note TZ offset change per DST                |
+#
+# These can be checked with `--dryrun`
+def rewrite_timestamp(ts_str, now=None):
+    """Rewrite a timestamp string to ISO8601 with local timezone offset.
+
+    Relative durations (e.g. '4h', '1d') are returned unchanged.
+    Absolute and semi-absolute timestamps are parsed as local time and
+    returned in ISO8601 format with the local UTC offset.
+    """
+    if not ts_str:
+        return ts_str
+
+    ts_str = ts_str.strip()
+
+    if is_relative_duration(ts_str):
+        return ts_str
+
+    if now is None:
+        now = datetime.datetime.now()
+
+    lower = ts_str.lower()
+    # Remove commas from words (for "Jan 4, 2026" format)
+    words = [w.rstrip(',') for w in lower.split()]
+
+    # Classify each word
+    date_part = None      # (year, month, day) tuple
+    day_name = None       # weekday number (0=Monday)
+    time_part = None      # (hour, minute) tuple
+    month_val = None      # month number from month name
+    numbers = []          # standalone numbers
+
+    for word in words:
+        # Check for M/D/YY, M/D/YYYY, or M/D date
+        if '/' in word and date_part is None:
+            slash_parts = word.split('/')
+            if len(slash_parts) == 3 and all(p.isdigit() for p in slash_parts):
+                m, d, y = int(slash_parts[0]), int(slash_parts[1]), int(slash_parts[2])
+                if y < 100:
+                    y += 2000
+                date_part = (y, m, d)
+                continue
+            elif len(slash_parts) == 2 and all(p.isdigit() for p in slash_parts):
+                m, d = int(slash_parts[0]), int(slash_parts[1])
+                date_part = (None, m, d)  # None year = resolve later
+                continue
+
+        # Check for YYYY-MM-DD date
+        if '-' in word and date_part is None:
+            dash_parts = word.split('-')
+            if len(dash_parts) == 3 and all(p.isdigit() for p in dash_parts) and len(dash_parts[0]) == 4:
+                date_part = (int(dash_parts[0]), int(dash_parts[1]), int(dash_parts[2]))
+                continue
+
+        # Check for day name
+        if word in DAY_NAMES and day_name is None:
+            day_name = DAY_NAMES[word]
+            continue
+
+        # Check for month name
+        if word in MONTH_NAMES and month_val is None:
+            month_val = MONTH_NAMES[word]
+            continue
+
+        # Check for time (requires am/pm or colon)
+        t = parse_time_component(word)
+        if t is not None and time_part is None:
+            time_part = t
+            continue
+
+        # Check for standalone number (strip ordinal suffixes like 1st, 2nd, 3rd, 4th)
+        num_word = word
+        for suffix in ('st', 'nd', 'rd', 'th'):
+            if num_word.endswith(suffix):
+                num_word = num_word[:-len(suffix)]
+                break
+        if num_word.isdigit():
+            numbers.append(int(num_word))
+            continue
+
+    # If we found a month name and at least one number, construct a date
+    if date_part is None and month_val is not None and numbers:
+        day_num = numbers[0]
+        if len(numbers) > 1:
+            year_num = numbers[1]
+            if year_num < 100:
+                year_num += 2000
+        else:
+            year_num = None  # no year specified; resolve later
+        date_part = (year_num, month_val, day_num)
+
+    # Build the datetime from classified components
+    if date_part is not None:
+        year, month, day = date_part
+        hour, minute = time_part if time_part else (0, 0)
+        if year is None:
+            # No year specified: use current year, but if that's in the future, use prior year
+            year = now.year
+            dt = datetime.datetime(year, month, day, hour, minute, 0)
+            if dt > now:
+                dt = datetime.datetime(year - 1, month, day, hour, minute, 0)
+        else:
+            dt = datetime.datetime(year, month, day, hour, minute, 0)
+        return format_iso8601_with_offset(dt)
+
+    if day_name is not None:
+        current_weekday = now.weekday()
+        hour, minute = time_part if time_part else (0, 0)
+        candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        days_back = (current_weekday - day_name) % 7
+        candidate -= datetime.timedelta(days=days_back)
+        if candidate > now:
+            candidate -= datetime.timedelta(days=7)
+        return format_iso8601_with_offset(candidate)
+
+    if time_part is not None:
+        hour, minute = time_part
+        candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if candidate > now:
+            candidate -= datetime.timedelta(days=1)
+        return format_iso8601_with_offset(candidate)
+
+    # Cannot parse; return unchanged and let the server handle it
+    return ts_str
+
+
+def rewrite_timestamps(args):
+    """Rewrite --start and --end timestamps in args if they are absolute or semi-absolute."""
+    if hasattr(args, 'start') and args.start:
+        args.start = rewrite_timestamp(args.start)
+    if hasattr(args, 'end') and args.end:
+        args.end = rewrite_timestamp(args.end)
+
+
 
 
 if __name__ == '__main__':
