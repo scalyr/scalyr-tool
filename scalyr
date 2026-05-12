@@ -227,18 +227,28 @@ def parse_timestamp(timestamp_str):
 
 
 # Return the API token from the command line or environment variables.
+# Resolution order: --token-stdin / --token-fd > --token > env var
 def getApiToken(args, environmentVariableName, permissionType):
-    apiToken = args.token
-    if apiToken == '':
-        apiToken = os.getenv(environmentVariableName, '')
-    if apiToken == '':
+    fd = 0 if args.token_stdin else args.token_fd  # token_stdin is a convenience alias for fd 0 (stdin)
+    if fd is not None:
+        try:
+            with os.fdopen(fd, 'r') as f:
+                return f.read().strip()
+        except OSError as e:
+            print_stderr('Error reading token from fd %d: %s' % (fd, e))
+            sys.exit(1)
+
+    api_token = args.token
+    if api_token == '':
+        api_token = os.getenv(environmentVariableName, '')
+    if api_token == '':
         print_stderr('Please specify an API token granting ' + permissionType + ' permission. You can place it in the')
         print_stderr('command line as --token "XXX", or in the environment variable "' + environmentVariableName + '".')
         print_stderr('Use of an environment variable is recommended, to avoid displaying your API token in the')
         print_stderr('console or your command history. You can find API tokens at https://www.scalyr.com/keys.')
         sys.exit(1)
 
-    return apiToken
+    return api_token
 
 
 def getProxyAddress(args):
@@ -942,17 +952,19 @@ def scalyrToolCli():
                         help='specifies the action to be performed')
     parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
     parser.add_argument('--server',
-                        help='URL for the Scalyr API server.  Defaults to https://www.scalyr.com. If you are using eu.scalyr.com then this should be set to https://eu.scalyr.com.')
+                        help='URL for the Scalyr API server. Defaults to https://www.scalyr.com. If you are using eu.scalyr.com then this should be set to https://eu.scalyr.com.')
     parser.add_argument('--token', default='',
                         help='API access token')
+    parser.add_argument('--token-stdin', action='store_true', default=False,
+                        help='Read API token from stdin (avoids argv exposure). Example: echo $TOKEN | scalyr query ... --token-stdin')
+    parser.add_argument('--token-fd', type=int, metavar='FD',  # returns None when not supplied
+                        help='Read API token from an open file descriptor (avoids argv exposure). Example: scalyr query ... --token-fd 3 3< <(cat ~/.scalyr-token)')
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='enables additional diagnostic output')
     parser.add_argument('--dryrun', action='store_true', default=False,
                         help='enables verbose mode and exits after printing the request body without contacting the server')
-
     parser.add_argument('--no-escape-unicode', action="store_false",
                         help='When true, the json-pretty output format will show unicode characters rather than escaped unicode characters (the default for json-pretty is to use escaped characters)')
-
     parser.add_argument('--proxy', help='Proxy to connect through')
 
     command = None
