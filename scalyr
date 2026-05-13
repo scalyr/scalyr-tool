@@ -227,23 +227,20 @@ def parse_timestamp(timestamp_str):
 
 
 # Return the API token from the command line or environment variables.
-# Resolution order: --token-stdin / --token-fd > --token > env var
-def getApiToken(args, environmentVariableName, permissionType):
-    fd = 0 if args.token_stdin else args.token_fd  # token_stdin is a convenience alias for fd 0 (stdin)
-    if fd is not None:
-        try:
-            with os.fdopen(fd, 'r') as f:
-                return f.read().strip()
-        except OSError as e:
-            print_stderr('Error reading token from fd %d: %s' % (fd, e))
+# Resolution order: --token > env var
+def getApiToken(args, env_variable_name, permission_type, stdin_ok=False):
+    if args.token == '-':
+        if not stdin_ok:
+            print_stderr('--token - (stdin) is not supported for this command.')
             sys.exit(1)
+        return sys.stdin.readline().strip()
 
     api_token = args.token
     if api_token == '':
-        api_token = os.getenv(environmentVariableName, '')
+        api_token = os.getenv(env_variable_name, '')
     if api_token == '':
-        print_stderr('Please specify an API token granting ' + permissionType + ' permission. You can place it in the')
-        print_stderr('command line as --token "XXX", or in the environment variable "' + environmentVariableName + '".')
+        print_stderr('Please specify an API token granting ' + permission_type + ' permission. You can place it in the')
+        print_stderr('command line as --token "XXX", or in the environment variable "' + env_variable_name + '".')
         print_stderr('Use of an environment variable is recommended, to avoid displaying your API token in the')
         print_stderr('console or your command history. You can find API tokens at https://www.scalyr.com/keys.')
         sys.exit(1)
@@ -529,7 +526,7 @@ def commandQuery(parser):
         sys.exit(1)
 
     # Get the API token.
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     params = {
         "token": apiToken,
@@ -716,7 +713,7 @@ def commandTail(parser):
 
     # Get the API token
     args = parser.parse_args()
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     try:
         liveTail(apiToken, args)
@@ -744,7 +741,7 @@ def commandNumericQuery(parser):
     args = parser.parse_args()
 
     # Get the API token.
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     # Send the query to the server.
     response, rawResponse = sendRequest(args, '/api/numericQuery', {
@@ -799,7 +796,7 @@ def commandFacetQuery(parser):
     args = parser.parse_args()
 
     # Get the API token.
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     # Send the query to the server.
     response, rawResponse = sendRequest(args, '/api/facetQuery', {
@@ -863,7 +860,7 @@ def commandPowerQuery(parser):
     args = parser.parse_args()
 
     # Get the API token.
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     # Send the query to the server.
     response, rawResponse = sendRequest(args, '/api/powerQuery', {
@@ -904,7 +901,7 @@ def commandTimeseriesQuery(parser):
     args = parser.parse_args()
 
     # Get the API token.
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     # build the query
     query = {
@@ -954,11 +951,8 @@ def scalyrToolCli():
     parser.add_argument('--server',
                         help='URL for the Scalyr API server. Defaults to https://www.scalyr.com. If you are using eu.scalyr.com then this should be set to https://eu.scalyr.com.')
     parser.add_argument('--token', default='',
-                        help='API access token')
-    parser.add_argument('--token-stdin', action='store_true', default=False,
-                        help='Read API token from stdin (avoids argv exposure). Example: echo $TOKEN | scalyr query ... --token-stdin')
-    parser.add_argument('--token-fd', type=int, metavar='FD',  # returns None when not supplied
-                        help='Read API token from an open file descriptor (avoids argv exposure). Example: scalyr query ... --token-fd 3 3< <(cat ~/.scalyr-token)')
+                        help='API access token. Use - to read from stdin (query commands only).')
+
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='enables additional diagnostic output')
     parser.add_argument('--dryrun', action='store_true', default=False,

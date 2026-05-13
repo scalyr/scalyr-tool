@@ -36,18 +36,14 @@ The values for `XXX`, `YYY`, and `ZZZ` can be found at [scalyr.com/keys](https:/
 for "Read Logs", "Read Config", and "Write Config" tokens, respectively.
 
 For situations where neither argv nor a persistent environment variable is acceptable (e.g. long-running
-queries visible in `ps aux`, or CI pipelines), two safer alternatives are available:
+queries visible in `ps aux`, or CI pipelines), use `--token -` to read the token from stdin. The token never appears in
+the process argument list.
 
-- `--token-stdin` -- pipe the token into the tool on stdin. The token never appears in the process
-  argument list. This works for all commands except `put-file`, which reads file content from stdin.
+    security find-generic-password -a "<my_user>" -s "<some_key>" -w \
+      | scalyr query '<my_query>' --token -
 
-      security find-generic-password -a "$USER" -s "dataset-api-key-myteam" -w \
-        | scalyr query 'error' --token-stdin
-
-- `--token-fd N` -- pass the token on an already-open file descriptor. Works with all commands,
-  including `put-file`. Use bash's `N< <(...)` redirect syntax to open the fd without touching argv.
-
-      scalyr put-file /scalyr/alerts --token-fd 3 3< <(cat ~/.scalyr-token)
+`--token -` is supported for query commands (`query`, `tail`, `numeric-query`, `facet-query`,
+`power-query`, `timeseries-query`).
 
 Setting a custom Scalyr server can be done using the `--server` argument but also via environment variable:
 
@@ -108,10 +104,6 @@ Complete argument list:
         priority queries.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
-    --token-stdin
-        Read the API token from stdin instead of argv.
-    --token-fd N
-        Read the API token from an already-open file descriptor N.
     --verbose
         Writes detailed progress information to stderr.
     --proxy=<ip>:<port>
@@ -178,10 +170,6 @@ Complete argument list:
         priority queries.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
-    --token-stdin
-        Read the API token from stdin instead of argv.
-    --token-fd N
-        Read the API token from an already-open file descriptor N.
     --verbose
         Writes detailed progress information to stderr.
     --proxy=<ip>:<port>
@@ -240,10 +228,6 @@ Complete argument list:
         Defaults to 'messageonly'.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
-    --token-stdin
-        Read the API token from stdin instead of argv.
-    --token-fd N
-        Read the API token from an already-open file descriptor N.
 
 #### Usage limits
 
@@ -312,10 +296,6 @@ Complete argument list:
         priority queries.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
-    --token-stdin
-        Read the API token from stdin instead of argv.
-    --token-fd N
-        Read the API token from an already-open file descriptor N.
     --version
         Prints the current version number of this tool.
     --verbose
@@ -377,10 +357,6 @@ Complete argument list:
         priority queries.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
-    --token-stdin
-        Read the API token from stdin instead of argv.
-    --token-fd N
-        Read the API token from an already-open file descriptor N.
     --version
         Prints the current version number of this tool.
     --verbose
@@ -467,10 +443,6 @@ Complete argument list:
         Specifies to not create summaries for this query.
     --token=xxx
         Specify the API token. For this command, should be a "Read Logs" token.
-    --token-stdin
-        Read the API token from stdin instead of argv.
-    --token-fd N
-        Read the API token from an already-open file descriptor N.
     --version
         Prints the current version number of this tool.
     --verbose
@@ -478,8 +450,6 @@ Complete argument list:
     --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
-
-
 
 
 ## Retrieving configuration files
@@ -504,10 +474,6 @@ Complete argument list:
         Prints the current version number of this tool.
     --token=xxx
         Specify the API token. For this command, should be a "Read Config" token.
-    --token-stdin
-        Read the API token from stdin instead of argv.
-    --token-fd N
-        Read the API token from an already-open file descriptor N.
     --verbose
         Writes detailed progress information to stderr.
     --proxy=<ip>:<port>
@@ -536,9 +502,6 @@ Complete argument list:
         Prints the current version number of this tool.
     --token=xxx
         Specify the API token. For this command, should be a "Write Config" token.
-    --token-fd N
-        Read the API token from an already-open file descriptor N. (Use this instead of --token-stdin,
-        since put-file reads file content from stdin.)
     --verbose
         Writes detailed progress information to stderr.
     --proxy=<ip>:<port>
@@ -571,10 +534,6 @@ Complete argument list:
         Prints the current version number of this tool.
     --token=xxx
         Specify the API token. For this command, should be a "Read Config" token.
-    --token-stdin
-        Read the API token from stdin instead of argv.
-    --token-fd N
-        Read the API token from an already-open file descriptor N.
     --verbose
         Writes detailed progress information to stderr.
     --proxy=<ip>:<port>
