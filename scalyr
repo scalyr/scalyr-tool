@@ -301,7 +301,7 @@ def output_encoded(message):
 # Send a request to the server, and return the parsed JSON response.
 # args: Our parsed command-line arguments
 # uri: Request path for this RPC, e.g. "api/query"
-# parametetDict: The dictionary to be sent (JSON-encoded) to the server as the request body
+# parameterDict: The dictionary to be sent (JSON-encoded) to the server as the request body
 def sendRequest(args, uri, parameterDict):
     parameterJson = json.dumps(parameterDict)
 
@@ -952,7 +952,6 @@ def scalyrToolCli():
                         help='URL for the Scalyr API server. Defaults to https://www.scalyr.com. If you are using eu.scalyr.com then this should be set to https://eu.scalyr.com.')
     parser.add_argument('--token', default='',
                         help='API access token. Use - to read from stdin (query commands only).')
-
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='enables additional diagnostic output')
     parser.add_argument('--dryrun', action='store_true', default=False,
