@@ -426,12 +426,18 @@ def commandPutFile(parser):
     # Parse the command-line arguments.
     parser.add_argument('filepath',
                         help='server pathname of the file to upload, e.g. "/scalyr/alerts"')
-    parser.add_argument('--validate',
-                        action='store_true',
+    parser.add_argument('--validate', action='store_true',
                         help='validate if input is a valid HOCON')
+    parser.add_argument('--local-path',
+                        help='path to a local file whose contents will be uploaded; use this instead of piping content via stdin')
     args = parser.parse_args()
 
-    content = sys.stdin.read()
+    if args.local_path:
+        with open(args.local_path, 'r') as f:
+            content = f.read()
+    else:
+        print_stderr('WARNING: piping file content via stdin is deprecated, switch to using `--local-path` instead.')
+        content = sys.stdin.read()
     if args.validate:
 
         from importlib import import_module
