@@ -473,16 +473,15 @@ Complete argument list:
 
 ## Creating or updating configuration files
 
-The "put-file" command allows you to create or overwrite a configuration file, taking the new
-file content from stdin.
+The "put-file" command allows you to create or overwrite a configuration file.
 
 Using the put-file command is simple:
 
     # Overwrite the alerts file
-    scalyr put-file /alerts < alerts.json
+    scalyr put-file /alerts --local-path alerts.json
 
     # Create or overwrite the "Foo" dashboard
-    scalyr put-file /dashboards/Foo < fooDashboard.json
+    scalyr put-file /dashboards/Foo --local-path fooDashboard.json
 
 Complete argument list:
 
@@ -497,9 +496,13 @@ Complete argument list:
     --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
+    --local-path=xxx
+        Path to a local file whose contents will be uploaded. Use this instead of piping content via stdin.
     --validate
         Validate if input is a valid HOCON. Validation relies on pyhocon parser
         (see https://github.com/chimpler/pyhocon).
+
+Note: Piping file content via stdin is deprecated. Use `--local-path` instead.
 
 ## Deleting configuration files
 
