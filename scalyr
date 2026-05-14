@@ -227,18 +227,25 @@ def parse_timestamp(timestamp_str):
 
 
 # Return the API token from the command line or environment variables.
-def getApiToken(args, environmentVariableName, permissionType):
-    apiToken = args.token
-    if apiToken == '':
-        apiToken = os.getenv(environmentVariableName, '')
-    if apiToken == '':
-        print_stderr('Please specify an API token granting ' + permissionType + ' permission. You can place it in the')
-        print_stderr('command line as --token "XXX", or in the environment variable "' + environmentVariableName + '".')
+# Resolution order: --token > env var
+def getApiToken(args, env_variable_name, permission_type, stdin_ok=False):
+    if args.token == '-':
+        if not stdin_ok:
+            print_stderr('--token - (stdin) is not supported for this command.')
+            sys.exit(1)
+        return sys.stdin.readline().strip()
+
+    api_token = args.token
+    if api_token == '':
+        api_token = os.getenv(env_variable_name, '')
+    if api_token == '':
+        print_stderr('Please specify an API token granting ' + permission_type + ' permission. You can place it in the')
+        print_stderr('command line as --token "XXX", or in the environment variable "' + env_variable_name + '".')
         print_stderr('Use of an environment variable is recommended, to avoid displaying your API token in the')
         print_stderr('console or your command history. You can find API tokens at https://www.scalyr.com/keys.')
         sys.exit(1)
 
-    return apiToken
+    return api_token
 
 
 def getProxyAddress(args):
@@ -294,7 +301,7 @@ def output_encoded(message):
 # Send a request to the server, and return the parsed JSON response.
 # args: Our parsed command-line arguments
 # uri: Request path for this RPC, e.g. "api/query"
-# parametetDict: The dictionary to be sent (JSON-encoded) to the server as the request body
+# parameterDict: The dictionary to be sent (JSON-encoded) to the server as the request body
 def sendRequest(args, uri, parameterDict):
     parameterJson = json.dumps(parameterDict)
 
@@ -519,7 +526,7 @@ def commandQuery(parser):
         sys.exit(1)
 
     # Get the API token.
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     params = {
         "token": apiToken,
@@ -706,7 +713,7 @@ def commandTail(parser):
 
     # Get the API token
     args = parser.parse_args()
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     try:
         liveTail(apiToken, args)
@@ -734,7 +741,7 @@ def commandNumericQuery(parser):
     args = parser.parse_args()
 
     # Get the API token.
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     # Send the query to the server.
     response, rawResponse = sendRequest(args, '/api/numericQuery', {
@@ -789,7 +796,7 @@ def commandFacetQuery(parser):
     args = parser.parse_args()
 
     # Get the API token.
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     # Send the query to the server.
     response, rawResponse = sendRequest(args, '/api/facetQuery', {
@@ -853,7 +860,7 @@ def commandPowerQuery(parser):
     args = parser.parse_args()
 
     # Get the API token.
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     # Send the query to the server.
     response, rawResponse = sendRequest(args, '/api/powerQuery', {
@@ -894,7 +901,7 @@ def commandTimeseriesQuery(parser):
     args = parser.parse_args()
 
     # Get the API token.
-    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs')
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
 
     # build the query
     query = {
@@ -942,17 +949,15 @@ def scalyrToolCli():
                         help='specifies the action to be performed')
     parser.add_argument('--version', action='version', version='%(prog)s ' + TOOL_VERSION)
     parser.add_argument('--server',
-                        help='URL for the Scalyr API server.  Defaults to https://www.scalyr.com. If you are using eu.scalyr.com then this should be set to https://eu.scalyr.com.')
+                        help='URL for the Scalyr API server. Defaults to https://www.scalyr.com. If you are using eu.scalyr.com then this should be set to https://eu.scalyr.com.')
     parser.add_argument('--token', default='',
-                        help='API access token')
+                        help='API access token. Use - to read from stdin (query commands only).')
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='enables additional diagnostic output')
     parser.add_argument('--dryrun', action='store_true', default=False,
                         help='enables verbose mode and exits after printing the request body without contacting the server')
-
     parser.add_argument('--no-escape-unicode', action="store_false",
                         help='When true, the json-pretty output format will show unicode characters rather than escaped unicode characters (the default for json-pretty is to use escaped characters)')
-
     parser.add_argument('--proxy', help='Proxy to connect through')
 
     command = None

@@ -32,8 +32,18 @@ command history. On Unix systems, you can add the following to a file like `.bas
     export scalyr_readconfig_token='YYY'
     export scalyr_writeconfig_token='ZZZ'
 
-The values for XXX, YYY, and ZZZ can be found at [scalyr.com/keys](https://www.scalyr.com/keys) -- look
+The values for `XXX`, `YYY`, and `ZZZ` can be found at [scalyr.com/keys](https://www.scalyr.com/keys) -- look
 for "Read Logs", "Read Config", and "Write Config" tokens, respectively.
+
+For situations where neither argv nor a persistent environment variable is acceptable (e.g. long-running
+queries visible in `ps aux`, or CI pipelines), use `--token -` to read the token from stdin. The token never appears in
+the process argument list.
+
+    security find-generic-password -a "<my_user>" -s "<some_key>" -w \
+      | scalyr query '<my_query>' --token -
+
+`--token -` is supported for query commands (`query`, `tail`, `numeric-query`, `facet-query`,
+`power-query`, `timeseries-query`).
 
 Setting a custom Scalyr server can be done using the `--server` argument but also via environment variable:
 
@@ -216,6 +226,8 @@ Complete argument list:
         Similar to the multiline and singleline options for the 'query' command, but also has a 'messageonly'
         mode that will only display the raw log message, and not any additional attributes.
         Defaults to 'messageonly'.
+    --token=xxx
+        Specify the API token. For this command, should be a "Read Logs" token.
 
 #### Usage limits
 
@@ -438,8 +450,6 @@ Complete argument list:
     --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
-
-
 
 
 ## Retrieving configuration files
