@@ -111,14 +111,9 @@ def _parse_date_component(s):
 
 def _get_local_tz_offset(dt):
     """Get the local timezone offset for a given datetime, accounting for DST."""
-    # Get the timestamp for the given datetime
     timestamp = time.mktime(dt.timetuple())
-    # Get local time and UTC time for that timestamp
-    local_time = datetime.datetime.fromtimestamp(timestamp)
-    utc_time = datetime.datetime.utcfromtimestamp(timestamp)
-    # Calculate offset in seconds
-    offset_seconds = (local_time - utc_time).total_seconds()
-    return int(offset_seconds)
+    local_dt = datetime.datetime.fromtimestamp(timestamp).astimezone()
+    return int(local_dt.utcoffset().total_seconds())
 
 
 def _format_iso8601(dt, offset_seconds):
