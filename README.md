@@ -81,11 +81,9 @@ Complete argument list:
         field in the [log view](https://www.scalyr.com/events?mode=log).
 
     --start=xxx
-        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
-        the log view. Defaults to 1 day ago, or to 1 day before the end time if an end time is given.
+        Specify the beginning of the time range to query, in standard scalyr date/time syntax. Defaults to "1d".
     --end=xxx
-        Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
-        view. Defaults to the current time, or to 1 day after the start time if a start time is given.
+        Specify the end of the time range to query, in standard scalyr date/time syntax.  Defaults to "+1d".
     --count=nnn
         How many log records to retrieve, from 1 to 5000. Defaults to 10.
     --mode=head|tail
@@ -155,11 +153,9 @@ Complete argument list:
         page which is documented [here](https://app.scalyr.com/help/power-queries).
 
     --start=xxx
-        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
-        the PowerQueries page. This field is required.
+        Specify the beginning of the time range to query, in standard scalyr date/time syntax. Required.
     --end=xxx
-        Specify the end of the time range to query. Uses the same syntax as the "End" field in the PowerQueries page.
-        Defaults to 1 day after the start time if a start time is given.
+        Specify the end of the time range to query, in standard scalyr date/time syntax.  Defaults to "+1d".
     --output=csv|json|json-pretty
         How to display the log records (see below).
     --version
@@ -250,7 +246,7 @@ A numeric query is equivalent to a [timeseries-query](#fetching-numeric-data-usi
 you may want to use the timeseries query command rather than `numeric-query`.
 
 The commands take the same options and return the same data, but for `timeseries-query` invocations without
-`--no-create-summaries` we create a timeseries on the backend for each unique filter/function pair.  
+`--no-create-summaries` we create a timeseries on the backend for each unique filter/function pair.
 This query will execute near-instantaneously, and avoid consuming your account's query budget (see below).
 
 Here are some usage examples:
@@ -276,11 +272,9 @@ Complete argument list:
         returned. Specifying 'rate' yields the same result. Finally, you can specify "count", to compute
         the number of matching events in each time period (as defined by the "buckets" option).
     --start=xxx
-        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
-        the log view. You must specify this argument.
+        Specify the beginning of the time range to query, in standard scalyr date/time syntax. Required.
     --end=xxx
-        Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
-        view. Defaults to the current time.
+        Specify the end of the time range to query, in standard scalyr date/time syntax.  Defaults to "+1d".
     --buckets=nnn
         The number of numeric values to return. The time range is divided into this many equal slices.
         For instance, suppose you query a four-hour period, with buckets = 4. The query will return four
@@ -341,11 +335,9 @@ Complete argument list:
     --count=nnn
         How many distinct values to return. You may specify a value from 1 to 1000; 100 is the default.
     --start=xxx
-        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
-        the log view. You must specify this argument.
+        Specify the beginning of the time range to query, in standard scalyr date/time syntax. Required.
     --end=xxx
-        Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
-        view. Defaults to the current time.
+        Specify the end of the time range to query, in standard scalyr date/time syntax.  Defaults to "+1d".
     --output=csv|json|json-pretty
         How to display the results. 'csv' prints one value (and its count) per line, separated by commas.
         'json' prints the raw JSON response from the server, as documented at
@@ -410,11 +402,9 @@ Complete argument list:
         Just like numeric-query if `--no-create-summaries` is specified. Otherwise Scalyr will create a timeseries for
         you in the background.
     --start=xxx
-        Specify the beginning of the time range to query. Uses the same syntax as the "Start" field in
-        the log view. You must specify this argument.
+        Specify the beginning of the time range to query, in standard scalyr date/time syntax. Required.
     --end=xxx
-        Specify the end of the time range to query. Uses the same syntax as the "End" field in the log
-        view. Defaults to the current time.
+        Specify the end of the time range to query, in standard scalyr date/time syntax.  Defaults to "+1d".
     --function=xxx
         The value to compute from the matching events. You can use any function listed in
         https://www.scalyr.com/help/query-language#graphFunctions, except for fraction(expr). For
