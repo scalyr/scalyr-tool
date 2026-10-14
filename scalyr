@@ -500,10 +500,8 @@ def commandQuery(parser):
     # Parse the command-line arguments.
     parser.add_argument('filter', nargs='?', default='',
                         help='search term or filter expression')
-    parser.add_argument('--start', default='',
-                        help='beginning of the time range to query')
-    parser.add_argument('--end', default='',
-                        help='end of the time range to query')
+    parser.add_argument('--start', default='1d', help='beginning of the time range to query, defaults to "1d"')
+    parser.add_argument('--end', default='+1d', help='end of the time range to query, defaults to "+1d"')
     parser.add_argument('--count', type=int, default=10,
                         help='how many log records to retrieve (1-5000)')
     parser.add_argument('--mode', choices=['head', 'tail', ''], default='',
@@ -729,10 +727,8 @@ def commandNumericQuery(parser):
                         help='search term or filter expression')
     parser.add_argument('--function', default='',
                         help='the value to compute from the events matching the filter')
-    parser.add_argument('--start', required=True,
-                        help='beginning of the time range to query')
-    parser.add_argument('--end', default='',
-                        help='end of the time range to query')
+    parser.add_argument('--start', required=True, help='beginning of the time range to query. required')
+    parser.add_argument('--end', default='+1d', help='end of the time range to query, defaults to "+1d"')
     parser.add_argument('--buckets', type=int, default=1,
                         help='how many buckets to divide the time interval into (1-5000)')
     parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
@@ -786,10 +782,8 @@ def commandFacetQuery(parser):
                         help='the field whose values should be retrieved')
     parser.add_argument('--count', type=int, default=100,
                         help='maximum number of unique values to retrieve (1-1000)')
-    parser.add_argument('--start', required=True,
-                        help='beginning of the time range to query')
-    parser.add_argument('--end', default='',
-                        help='end of the time range to query')
+    parser.add_argument('--start', required=True, help='beginning of the time range to query. required')
+    parser.add_argument('--end', default='+1d', help='end of the time range to query, defaults to "+1d"')
     parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
                         help='specifies the format in which values are emitted')
     parser.add_argument('--priority', choices=['high', 'low'], default='high',
@@ -850,10 +844,8 @@ def commandPowerQuery(parser):
     # Parse the command-line arguments.
     parser.add_argument('filter', nargs=1,
                         help='scalyr power query')
-    parser.add_argument('--start', required=True,
-                        help='beginning of the time range to query')
-    parser.add_argument('--end', default='',
-                        help='end of the time range to query')
+    parser.add_argument('--start', required=True, help='beginning of the time range to query. required')
+    parser.add_argument('--end', default='+1d', help='end of the time range to query, defaults to "+1d"')
     parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
                         help='specifies the format in which values are emitted')
     parser.add_argument('--priority', choices=['high', 'low'], default='high',
@@ -883,10 +875,8 @@ def commandTimeseriesQuery(parser):
                         help='search term or filter expression')
     parser.add_argument('--function', default='',
                         help='the value to compute from the events matching the filter')
-    parser.add_argument('--start', required=True,
-                        help='beginning of the time range to query')
-    parser.add_argument('--end', default='',
-                        help='end of the time range to query')
+    parser.add_argument('--start', required=True, help='beginning of the time range to query. required')
+    parser.add_argument('--end', default='+1d', help='end of the time range to query, defaults to "+1d"')
     parser.add_argument('--buckets', type=int, default=1,
                         help='how many buckets to divide the time interval into (1-5000)')
     parser.add_argument('--output', choices=['csv', 'json', 'json-pretty'], default='csv',
