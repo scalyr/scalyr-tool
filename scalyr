@@ -89,7 +89,9 @@ def _parse_time_component(s):
                 hour += 12
             elif not is_pm and hour == 12:
                 hour = 0
-            return (hour, minute, True)
+            if 0 <= hour <= 23 and 0 <= minute <= 59:
+                return (hour, minute, True)
+            return (None, None, False)
     return (None, None, False)
 
 
@@ -103,6 +105,8 @@ def _parse_date_component(s):
             year = int(parts[2])
             if year < 100:
                 year += 2000
+            # Reject impossible dates so callers pass them through instead of crashing.
+            datetime.datetime(year, month, day)
             return (year, month, day, True)
         except ValueError:
             pass
