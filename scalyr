@@ -9,6 +9,7 @@ import time
 import datetime
 import json
 import csv
+import re
 
 # unicode string type, set to str initially as 'str' exists in both
 # python 2 and 3.  If python 2 we will override it with the unicode
@@ -293,26 +294,11 @@ def output_encoded(message):
     return message
 
 
-# Send a request to the server, and return the parsed JSON response.
+# Open a connection to the given server, honoring the proxy settings.
 # args: Our parsed command-line arguments
-# uri: Request path for this RPC, e.g. "api/query"
-# parameterDict: The dictionary to be sent (JSON-encoded) to the server as the request body
-def sendRequest(args, uri, parameterDict):
-    parameterJson = json.dumps(parameterDict)
-
-    queryStartTime = datetime.datetime.now()
-
-    # dryrun implies verbose
-    verbose = args.verbose or args.dryrun
-    if verbose:
-        print_stderr("Using arguments: %s" % args)
-
-    # Allow to set custom scalyr_server via environment variable
-    serverAddress = args.server
-
-    if serverAddress is None:
-        serverAddress = os.environ.get('scalyr_server', 'https://www.scalyr.com')
-
+# serverAddress: Server URL, e.g. "https://www.scalyr.com"; no scheme means https
+# verbose: Whether to print diagnostics to stderr
+def openConnection(args, serverAddress, verbose):
     proxyAddress, useProxy = getProxyAddress(args)
 
     if verbose:
@@ -335,7 +321,6 @@ def sendRequest(args, uri, parameterDict):
             protocol = 'http'
         print_stderr("Connecting to %s via %s" % (serverAddress, protocol))
 
-    conn = None
     if useSSL and useProxy:
         proxyAddress = parseProxyAddress(proxyAddress)
         conn = httplib.HTTPSConnection(proxyAddress.hostname, proxyAddress.port)
@@ -348,6 +333,30 @@ def sendRequest(args, uri, parameterDict):
         conn = httplib.HTTPSConnection(serverAddress)
     else:
         conn = httplib.HTTPConnection(serverAddress)
+    return conn
+
+
+# Send a request to the server, and return the parsed JSON response.
+# args: Our parsed command-line arguments
+# uri: Request path for this RPC, e.g. "api/query"
+# parameterDict: The dictionary to be sent (JSON-encoded) to the server as the request body
+def sendRequest(args, uri, parameterDict):
+    parameterJson = json.dumps(parameterDict)
+
+    queryStartTime = datetime.datetime.now()
+
+    # dryrun implies verbose
+    verbose = args.verbose or args.dryrun
+    if verbose:
+        print_stderr("Using arguments: %s" % args)
+
+    # Allow to set custom scalyr_server via environment variable
+    serverAddress = args.server
+
+    if serverAddress is None:
+        serverAddress = os.environ.get('scalyr_server', 'https://www.scalyr.com')
+
+    conn = openConnection(args, serverAddress, verbose)
 
     headers = {"Content-type": "application/json"}
 
@@ -390,6 +399,62 @@ def sendRequest(args, uri, parameterDict):
         sys.exit(1)
 
     return (parsedResponse, responseBody)
+
+
+# Implement the "scalyr expand" command.
+def commandExpand(parser):
+    parser.add_argument('url',
+                        help='short URL to expand, e.g. "https://app.scalyr.com/y/G5AQJWabU51"')
+    args = parser.parse_args()
+    apiToken = getApiToken(args, 'scalyr_readlog_token', 'Read Logs', stdin_ok=True)
+
+    parsed = urlparse(args.url)
+    if parsed.scheme != 'https' or not re.match(r'^/y/[^/]+$', parsed.path):
+        print_stderr('Expected a short URL like https://app.scalyr.com/y/G5AQJWabU51, not "%s".' % args.url)
+        sys.exit(1)
+
+    # Never send the API token to a host the user did not choose; the URL may have come from anywhere.
+    trustedServer = args.server or os.environ.get('scalyr_server')
+    trustedHost = urlparse(trustedServer if '//' in trustedServer else '//' + trustedServer).hostname if trustedServer else None
+    host = parsed.hostname
+    if host != trustedHost and host != 'scalyr.com' and not host.endswith('.scalyr.com'):
+        print_stderr('Refusing to send your API token to "%s". If you trust it, pass --server https://%s.' % (host, host))
+        sys.exit(1)
+
+    verbose = args.verbose or args.dryrun
+    headers = {"Authorization": "Bearer " + apiToken}
+    if verbose:
+        print_stderr("Request: GET %s://%s%s" % (parsed.scheme, parsed.netloc, parsed.path))
+        print_stderr("Request headers:")
+        print_stderr("  Authorization: Bearer <redacted>")
+
+    if args.dryrun:
+        sys.exit(0)
+
+    conn = openConnection(args, '%s://%s' % (parsed.scheme, parsed.netloc), verbose)
+    conn.request("GET", parsed.path, None, headers)
+    response = conn.getresponse()
+    responseBody = response.read().decode('utf8')
+
+    if response.status in (301, 302, 303, 307, 308):
+        print_stderr('The server redirected to %s instead of answering. Short URL expansion with an API token'
+                     % response.getheader('Location'))
+        print_stderr('may not be enabled for your account.')
+        sys.exit(1)
+    if response.status != 200:
+        print_stderr('Scalyr server returned status %d / %s' % (response.status, response.reason))
+        if responseBody:
+            print_stderr('Response body: ' + responseBody)
+        sys.exit(1)
+
+    try:
+        parsedResponse = json.loads(responseBody)
+    except ValueError:
+        print_stderr('Scalyr server returned invalid response:')
+        print_stderr(responseBody)
+        sys.exit(1)
+
+    print(output_encoded(json.dumps(parsedResponse, sort_keys=True, indent=2, separators=(',', ': '))))
 
 
 # Implement the "scalyr get-file" command.
@@ -931,6 +996,7 @@ def scalyrToolCli():
         'put-file': commandPutFile,
         'delete-file': commandDeleteFile,
         'list-files': commandListFiles,
+        'expand': commandExpand,
     }
 
     # Define arguments that are the same for all commands

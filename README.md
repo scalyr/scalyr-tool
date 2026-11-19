@@ -43,7 +43,7 @@ the process argument list.
       | scalyr query '<my_query>' --token -
 
 `--token -` is supported for query commands (`query`, `tail`, `numeric-query`, `facet-query`,
-`power-query`, `timeseries-query`).
+`power-query`, `timeseries-query`) and `expand`.
 
 Setting a custom Scalyr server can be done using the `--server` argument but also via environment variable:
 
@@ -529,6 +529,49 @@ Complete argument list:
         Specify the API token. For this command, should be a "Read Config" token.
     --verbose
         Writes detailed progress information to stderr.
+    --proxy=<ip>:<port>
+        An address to connect through when using a proxy. If not set will also take the value from one of the following
+        environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
+
+
+## Expanding short URLs
+
+The "expand" command resolves a short URL (one that looks like `https://app.scalyr.com/y/G5AQJWabU51`) into the
+page it points to, using a "Read Logs" token rather than a browser login:
+
+    scalyr expand https://app.scalyr.com/y/G5AQJWabU51
+
+The output is JSON: the full `sourceUrl`, its `path`, its decoded query `params` (such as `filter` and `startTime`),
+and `createdMs`. For example:
+
+    {
+      "createdMs": 1763000000000,
+      "params": {
+        "filter": "$serverHost=\"host100\"",
+        "startTime": "1h"
+      },
+      "path": "/events",
+      "sourceUrl": "https://app.scalyr.com/events?filter=..."
+    }
+
+Only the account that created a short URL can expand it, and the server must have the feature enabled for that
+account. To keep your token from being sent somewhere unexpected, the URL must be `https` and its host must end in
+`scalyr.com` or match `--server` (or `scalyr_server`), e.g. `scalyr expand <url> --server https://app.example.com`.
+
+Complete argument list:
+
+    scalyr expand url [options...]
+
+    --version
+        Prints the current version number of this tool.
+    --token=xxx
+        Specify the API token. For this command, should be a "Read Logs" token.
+    --server=<url>
+        Also trust this server with your token, if its host does not end in scalyr.com.
+    --verbose
+        Writes detailed progress information to stderr.
+    --dryrun
+        Prints the request, with the token redacted, and exits without contacting the server.
     --proxy=<ip>:<port>
         An address to connect through when using a proxy. If not set will also take the value from one of the following
         environment variables if any are set: http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY
